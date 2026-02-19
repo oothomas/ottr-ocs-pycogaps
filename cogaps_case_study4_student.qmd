@@ -491,11 +491,6 @@ Your error happened because the distributed script is currently trying to read `
 
 `OSError: Unable to open file (file signature not found)`
 
-### Fix `run_pycogaps_distributed.py` to use the baked dataset path
-
-In `run_pycogaps_distributed.py`, set:
-
--   `input_h5ad = "/opt/data/kang_counts_25k.h5ad"`
 
 Then run distributed from **Terminal**:
 

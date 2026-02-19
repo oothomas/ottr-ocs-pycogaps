@@ -1,4 +1,4 @@
-# CoGAPS Case Study 4 — Docker + Quarto + PyCoGAPS (Student/Instructor)
+# CoGAPS Case Study 4 — Docker + Quarto + PyCoGAPS
 
 This repo provides a reproducible environment for **Case Study 4** using:
 
@@ -6,7 +6,7 @@ This repo provides a reproducible environment for **Case Study 4** using:
 - A project-local Python environment (`.venv`)
 - **PyCoGAPS built from source** (includes the C++ CoGAPS core)
 
-## Dataset strategy (Option A: user-provided mount)
+## Dataset strategy (user-provided mount)
 
 Figshare downloads can be blocked by AWS WAF (you may see `x-amzn-waf-action: challenge` / empty downloads).
 So this project assumes **you download the dataset once via your browser** and mount it into the container.
@@ -120,14 +120,3 @@ This should write:
 - `data/cogaps_result_distributed.h5ad`
 
 ---
-
-## Repo hygiene / what not to commit
-
-Do **not** commit:
-- `.venv/`
-- `vendor/`
-- `data/` outputs
-- `logs/`
-- `*.h5ad` datasets
-
-(See `.gitignore`.)
