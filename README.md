@@ -8,8 +8,7 @@ This repo provides a reproducible environment for **Case Study 4** using:
 
 ## Dataset strategy (user-provided mount)
 
-Figshare downloads can be blocked by AWS WAF (you may see `x-amzn-waf-action: challenge` / empty downloads).
-So this project assumes **you download the dataset once via your browser** and mount it into the container.
+This project assumes **you download the dataset once via your browser** and mount it into the container.
 
 The notebook expects the dataset at:
 
