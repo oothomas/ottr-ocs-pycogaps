@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# Copy this file to _environment for macOS/Linux:
+#   cp _environment.macos_linux _environment
+
+# Force Quarto + reticulate to use the project venv
+export QUARTO_PYTHON="./.venv/bin/python"
+export RETICULATE_PYTHON="./.venv/bin/python"
+
+# Thread limits (keep containers predictable)
+export OMP_NUM_THREADS="4"
+export OPENBLAS_NUM_THREADS="4"
+export MKL_NUM_THREADS="4"
+export NUMEXPR_NUM_THREADS="4"

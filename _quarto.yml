@@ -1,0 +1,10 @@
+project:
+  type: default
+
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    number-sections: true
+execute:
+  freeze: auto

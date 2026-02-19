@@ -1,0 +1,70 @@
+# =========================
+# OS / editor
+# =========================
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.vscode/
+.idea/
+
+# =========================
+# Quarto / render artifacts
+# =========================
+.quarto/
+_freeze/
+_site/
+_book/
+*_files/
+*_cache/
+
+# =========================
+# Jupyter / IPython
+# =========================
+.ipynb_checkpoints/
+.profile_default/
+
+# =========================
+# Python
+# =========================
+__pycache__/
+*.py[cod]
+*.so
+*.pyd
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+ENV/
+env/
+
+# =========================
+# R / RStudio
+# =========================
+.Rproj.user/
+.Rhistory
+.RData
+.Ruserdata
+
+# =========================
+# Cloned source + outputs
+# =========================
+vendor/
+data/
+logs/
+
+# =========================
+# Large datasets / binaries
+# (recommended: download during docker build)
+# =========================
+*.h5ad
+*.h5
+*.hdf5
+*.loom
+*.mtx
+*.pkl
+*.pickle
+*.feather
+*.parquet

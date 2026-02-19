@@ -1,0 +1,12 @@
+.venv/
+vendor/
+data/
+logs/
+.quarto/
+_freeze/
+__pycache__/
+*.h5ad
+*.h5
+*.html
+*_files/
+.DS_Store

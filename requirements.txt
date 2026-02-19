@@ -1,0 +1,12 @@
+# Quarto executes Python via Jupyter, so we need a Jupyter stack in the project venv
+jupyter
+ipykernel
+jupyter-cache
+
+# Build helpers
+pip
+setuptools
+wheel
+
+# Other Packages
+scikit-misc
