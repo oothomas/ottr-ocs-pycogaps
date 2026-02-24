@@ -1,0 +1,2368 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.5.57">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="Oshane Thomas">
+
+<title>Case Study 4 (Student Version): CoGAPS Bayesian NMF for IFN-β Responses in PBMC scRNA-seq</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { display: inline-block; text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js" integrity="sha512-bLT0Qm9VnAYZDflyKcBaQ2gg0hSYNQrJ8RilYldYQ1FxQYoCLtUjuuRuZo+fjqhx/qtq/1itJ0C2ejDxltZVFg==" crossorigin="anonymous"></script><script src="cogaps_case_study4_student_files/libs/clipboard/clipboard.min.js"></script>
+<script src="cogaps_case_study4_student_files/libs/quarto-html/quarto.js"></script>
+<script src="cogaps_case_study4_student_files/libs/quarto-html/popper.min.js"></script>
+<script src="cogaps_case_study4_student_files/libs/quarto-html/tippy.umd.min.js"></script>
+<script src="cogaps_case_study4_student_files/libs/quarto-html/anchor.min.js"></script>
+<link href="cogaps_case_study4_student_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="cogaps_case_study4_student_files/libs/quarto-html/quarto-syntax-highlighting.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="cogaps_case_study4_student_files/libs/bootstrap/bootstrap.min.js"></script>
+<link href="cogaps_case_study4_student_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="cogaps_case_study4_student_files/libs/bootstrap/bootstrap.min.css" rel="stylesheet" id="quarto-bootstrap" data-mode="light">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" integrity="sha512-c3Nl8+7g4LMSTdrm621y7kf9v3SDPnhxLNhcjFJbKECVnmZHTdo+IRO05sNLTH/D3vA6u1X32ehoLC7WFVdheg==" crossorigin="anonymous"></script>
+
+<script type="application/javascript">define('jquery', [],function() {return window.jQuery;})</script>
+
+
+</head>
+
+<body>
+
+<div id="quarto-content" class="page-columns page-rows-contents page-layout-article">
+<div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+  <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">Table of contents</h2>
+   
+  <ul>
+  <li><a href="#how-to-use-this-notebook" id="toc-how-to-use-this-notebook" class="nav-link active" data-scroll-target="#how-to-use-this-notebook"><span class="header-section-number">1</span> How to use this notebook</a>
+  <ul class="collapse">
+  <li><a href="#step-0-launch-the-container" id="toc-step-0-launch-the-container" class="nav-link" data-scroll-target="#step-0-launch-the-container"><span class="header-section-number">1.1</span> Step 0 — Launch the container</a></li>
+  <li><a href="#step-1-one-time-setup-inside-the-container" id="toc-step-1-one-time-setup-inside-the-container" class="nav-link" data-scroll-target="#step-1-one-time-setup-inside-the-container"><span class="header-section-number">1.2</span> Step 1 — One-time setup inside the container</a></li>
+  <li><a href="#step-2-render-optional" id="toc-step-2-render-optional" class="nav-link" data-scroll-target="#step-2-render-optional"><span class="header-section-number">1.3</span> Step 2 — Render (optional)</a></li>
+  <li><a href="#important-note-about-distributed-multiprocessing" id="toc-important-note-about-distributed-multiprocessing" class="nav-link" data-scroll-target="#important-note-about-distributed-multiprocessing"><span class="header-section-number">1.4</span> Important note about distributed / multiprocessing</a></li>
+  </ul></li>
+  <li><a href="#overview" id="toc-overview" class="nav-link" data-scroll-target="#overview"><span class="header-section-number">2</span> Overview</a>
+  <ul class="collapse">
+  <li><a href="#research-questions" id="toc-research-questions" class="nav-link" data-scroll-target="#research-questions"><span class="header-section-number">2.1</span> Research questions</a></li>
+  </ul></li>
+  <li><a href="#environment-check-run-this-first" id="toc-environment-check-run-this-first" class="nav-link" data-scroll-target="#environment-check-run-this-first"><span class="header-section-number">3</span> 1. Environment check (run this first)</a></li>
+  <li><a href="#imports-and-global-settings" id="toc-imports-and-global-settings" class="nav-link" data-scroll-target="#imports-and-global-settings"><span class="header-section-number">4</span> 2. Imports and global settings</a></li>
+  <li><a href="#load-data" id="toc-load-data" class="nav-link" data-scroll-target="#load-data"><span class="header-section-number">5</span> 3. Load data</a>
+  <ul class="collapse">
+  <li><a href="#confirm-required-metadata" id="toc-confirm-required-metadata" class="nav-link" data-scroll-target="#confirm-required-metadata"><span class="header-section-number">5.1</span> Confirm required metadata</a></li>
+  </ul></li>
+  <li><a href="#dataset-overview" id="toc-dataset-overview" class="nav-link" data-scroll-target="#dataset-overview"><span class="header-section-number">6</span> 4. Dataset overview</a>
+  <ul class="collapse">
+  <li><a href="#categorical-distributions" id="toc-categorical-distributions" class="nav-link" data-scroll-target="#categorical-distributions"><span class="header-section-number">6.1</span> Categorical distributions</a></li>
+  </ul></li>
+  <li><a href="#preprocessing-and-gene-selection-hvgs" id="toc-preprocessing-and-gene-selection-hvgs" class="nav-link" data-scroll-target="#preprocessing-and-gene-selection-hvgs"><span class="header-section-number">7</span> 5. Preprocessing and gene selection (HVGs)</a></li>
+  <li><a href="#prepare-data-for-cogaps" id="toc-prepare-data-for-cogaps" class="nav-link" data-scroll-target="#prepare-data-for-cogaps"><span class="header-section-number">8</span> 6. Prepare data for CoGAPS</a></li>
+  <li><a href="#run-cogaps-single-process-safe-for-quarto-render" id="toc-run-cogaps-single-process-safe-for-quarto-render" class="nav-link" data-scroll-target="#run-cogaps-single-process-safe-for-quarto-render"><span class="header-section-number">9</span> 7. Run CoGAPS (single-process; safe for Quarto render)</a></li>
+  <li><a href="#extract-matrices-a-and-p" id="toc-extract-matrices-a-and-p" class="nav-link" data-scroll-target="#extract-matrices-a-and-p"><span class="header-section-number">10</span> 8. Extract matrices A and P</a></li>
+  <li><a href="#attach-pattern-activities-back-to-cells" id="toc-attach-pattern-activities-back-to-cells" class="nav-link" data-scroll-target="#attach-pattern-activities-back-to-cells"><span class="header-section-number">11</span> 9. Attach pattern activities back to cells</a></li>
+  <li><a href="#q1-which-programs-respond-to-ifn-β-stimulation" id="toc-q1-which-programs-respond-to-ifn-β-stimulation" class="nav-link" data-scroll-target="#q1-which-programs-respond-to-ifn-β-stimulation"><span class="header-section-number">12</span> 10. Q1 — Which programs respond to IFN-β stimulation?</a></li>
+  <li><a href="#q2-identity-vs-activity-programs" id="toc-q2-identity-vs-activity-programs" class="nav-link" data-scroll-target="#q2-identity-vs-activity-programs"><span class="header-section-number">13</span> 11. Q2 — Identity vs activity programs</a></li>
+  <li><a href="#visualize-programs-on-umap" id="toc-visualize-programs-on-umap" class="nav-link" data-scroll-target="#visualize-programs-on-umap"><span class="header-section-number">14</span> 12. Visualize programs on UMAP</a></li>
+  <li><a href="#q3-ifn-program-strength-across-immune-cell-types" id="toc-q3-ifn-program-strength-across-immune-cell-types" class="nav-link" data-scroll-target="#q3-ifn-program-strength-across-immune-cell-types"><span class="header-section-number">15</span> 13. Q3 — IFN program strength across immune cell types</a></li>
+  <li><a href="#pattern-gene-summaries-interpretability" id="toc-pattern-gene-summaries-interpretability" class="nav-link" data-scroll-target="#pattern-gene-summaries-interpretability"><span class="header-section-number">16</span> 14. Pattern gene summaries (interpretability)</a></li>
+  <li><a href="#optional-distributed-cogaps-advanced" id="toc-optional-distributed-cogaps-advanced" class="nav-link" data-scroll-target="#optional-distributed-cogaps-advanced"><span class="header-section-number">17</span> 15. Optional: distributed CoGAPS (advanced)</a></li>
+  <li><a href="#final-answers-summary" id="toc-final-answers-summary" class="nav-link" data-scroll-target="#final-answers-summary"><span class="header-section-number">18</span> Final answers (summary)</a></li>
+  <li><a href="#references" id="toc-references" class="nav-link" data-scroll-target="#references"><span class="header-section-number">19</span> References</a></li>
+  </ul>
+</nav>
+</div>
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<div class="quarto-title-block"><div><h1 class="title">Case Study 4 (Student Version): CoGAPS Bayesian NMF for IFN-β Responses in PBMC scRNA-seq</h1><button type="button" class="btn code-tools-button" id="quarto-code-tools-source"><i class="bi"></i> Code</button></div></div>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    <div>
+    <div class="quarto-title-meta-heading">Author</div>
+    <div class="quarto-title-meta-contents">
+             <p>Oshane Thomas </p>
+          </div>
+  </div>
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<section id="how-to-use-this-notebook" class="level1" data-number="1">
+<h1 data-number="1"><span class="header-section-number">1</span> How to use this notebook</h1>
+<p>This notebook is designed to be used <strong>inside the provided Docker image</strong> (RStudio Server + Quarto).</p>
+<p>You can work in either mode:</p>
+<ul>
+<li><strong>Interactive mode (recommended for learning):</strong> run code chunks one-by-one while you read the narrative.</li>
+<li><strong>Render mode (recommended for a complete report):</strong> render the full notebook to HTML.</li>
+</ul>
+<section id="step-0-launch-the-container" class="level2" data-number="1.1">
+<h2 data-number="1.1" class="anchored" data-anchor-id="step-0-launch-the-container"><span class="header-section-number">1.1</span> Step 0 — Launch the container</h2>
+<div class="sourceCode" id="cb1"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="ex">docker</span> pull <span class="at">--platform</span> linux/amd64 othomas2/ottr-ocs-pycogaps:latest</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="ex">docker</span> run <span class="at">--platform</span> linux/amd64 <span class="at">-it</span> <span class="at">--rm</span> <span class="dt">\</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">-p</span> 8787:8787 <span class="dt">\</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">-e</span> PASSWORD=<span class="st">"Password12"</span> <span class="dt">\</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>  othomas2/ottr-ocs-pycogaps:latest</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<p>Open:</p>
+<ul>
+<li><strong>URL:</strong> http://localhost:8787</li>
+<li><strong>User:</strong> <code>rstudio</code></li>
+<li><strong>Password:</strong> whatever you set in <code>PASSWORD=...</code></li>
+</ul>
+<blockquote class="blockquote">
+<p>If you’re on an Apple Silicon Mac, the <code>--platform linux/amd64</code> flag is required.</p>
+</blockquote>
+</section>
+<section id="step-1-one-time-setup-inside-the-container" class="level2" data-number="1.2">
+<h2 data-number="1.2" class="anchored" data-anchor-id="step-1-one-time-setup-inside-the-container"><span class="header-section-number">1.2</span> Step 1 — One-time setup inside the container</h2>
+<p>In <strong>RStudio → Terminal</strong>:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> /home/rstudio/project</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="fu">bash</span> setup_venv.sh</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<p>(Optional sanity check)</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> /home/rstudio/project</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="bu">source</span> _environment</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="ex">quarto</span> check jupyter</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</section>
+<section id="step-2-render-optional" class="level2" data-number="1.3">
+<h2 data-number="1.3" class="anchored" data-anchor-id="step-2-render-optional"><span class="header-section-number">1.3</span> Step 2 — Render (optional)</h2>
+<div class="sourceCode" id="cb4"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> /home/rstudio/project</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="bu">source</span> _environment</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a><span class="ex">quarto</span> render cogaps_case_study4_student.qmd</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<hr>
+</section>
+<section id="important-note-about-distributed-multiprocessing" class="level2" data-number="1.4">
+<h2 data-number="1.4" class="anchored" data-anchor-id="important-note-about-distributed-multiprocessing"><span class="header-section-number">1.4</span> Important note about distributed / multiprocessing</h2>
+<p><strong>Do not run distributed CoGAPS during Quarto render.</strong><br>
+Quarto executes every code chunk when rendering, and long-running / multi-process steps can fail or make renders painfully slow.</p>
+<p>If you want distributed CoGAPS, run it <strong>from Terminal</strong> using the provided script (see the optional section near the end), then come back and load the result in this notebook.</p>
+<hr>
+</section>
+</section>
+<section id="overview" class="level1" data-number="2">
+<h1 data-number="2"><span class="header-section-number">2</span> Overview</h1>
+<p>This case study applies <strong>CoGAPS (Bayesian NMF)</strong> to single-cell RNA-seq PBMCs under <strong>control vs IFN-β stimulation</strong> (Kang et al., 2018; GEO: GSE96583).</p>
+<p>Learning goal: use a latent factor model to separate:</p>
+<ul>
+<li><strong>Cell identity programs</strong> (stable lineage modules; “what a cell is”)</li>
+<li><strong>Cellular activity programs</strong> (stimulus-induced modules; “what a cell is doing”)</li>
+</ul>
+<section id="research-questions" class="level2" data-number="2.1">
+<h2 data-number="2.1" class="anchored" data-anchor-id="research-questions"><span class="header-section-number">2.1</span> Research questions</h2>
+<p><strong>Q1:</strong> What transcriptional programs respond to IFN-β stimulation across PBMCs?<br>
+<strong>Q2:</strong> Can we separate “cell type identity programs” from the “interferon response program”?<br>
+<strong>Q3:</strong> How does interferon-response pattern strength vary across immune cell types?</p>
+<hr>
+</section>
+</section>
+<section id="environment-check-run-this-first" class="level1" data-number="3">
+<h1 data-number="3"><span class="header-section-number">3</span> 1. Environment check (run this first)</h1>
+<div id="8895deaf" class="cell" data-execution_count="1">
+<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> os</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> sys</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> platform</span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"Python:"</span>, sys.version)</span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"Executable:"</span>, sys.executable)</span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"Platform:"</span>, platform.platform())</span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a><span class="co"># Verify PyCoGAPS is importable (this confirms setup worked)</span></span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> pycogaps</span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> PyCoGAPS.parameters <span class="im">import</span> CoParams, setParams</span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> PyCoGAPS.pycogaps_main <span class="im">import</span> CoGAPS</span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"✅ pycogaps + PyCoGAPS imports OK"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Python: 3.10.12 (main, Jan 26 2026, 14:55:28) [GCC 11.4.0]
+Executable: /home/rstudio/project/.venv/bin/python
+Platform: Linux-6.12.67-linuxkit-x86_64-with-glibc2.35
+
+______      _____       _____   ___  ______  _____ 
+| ___ \    /  __ \     |  __ \ / _ \ | ___ \/  ___|
+| |_/ /   _| /  \/ ___ | |  \// /_\ \| |_/ /\ `--. 
+|  __/ | | | |    / _ \| | __ |  _  ||  __/  `--. |
+| |  | |_| | \__/\ (_) | |_\ \| | | || |    /\__/ /
+\_|   \__, |\____/\___/ \____/\_| |_/\_|    \____/ 
+       __/ |                                       
+      |___/             
+                                 
+                    
+✅ pycogaps + PyCoGAPS imports OK</code></pre>
+</div>
+</div>
+<hr>
+</section>
+<section id="imports-and-global-settings" class="level1" data-number="4">
+<h1 data-number="4"><span class="header-section-number">4</span> 2. Imports and global settings</h1>
+<div id="e74b7c6e" class="cell" data-execution_count="2">
+<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> time</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> numpy <span class="im">as</span> np</span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> pandas <span class="im">as</span> pd</span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> scanpy <span class="im">as</span> sc</span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> matplotlib.pyplot <span class="im">as</span> plt</span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> seaborn <span class="im">as</span> sns</span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> IPython.display <span class="im">import</span> display</span>
+<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a>np.random.seed(<span class="dv">42</span>)</span>
+<span id="cb7-12"><a href="#cb7-12" aria-hidden="true" tabindex="-1"></a>plt.rcParams[<span class="st">"figure.dpi"</span>] <span class="op">=</span> <span class="dv">110</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<hr>
+</section>
+<section id="load-data" class="level1" data-number="5">
+<h1 data-number="5"><span class="header-section-number">5</span> 3. Load data</h1>
+<p>The dataset is baked into the Docker image at:</p>
+<ul>
+<li><code>/opt/data/kang_counts_25k.h5ad</code></li>
+</ul>
+<p>If it is not found, we fall back to downloading via Figshare.</p>
+<div id="a9b82d0d" class="cell" data-execution_count="3">
+<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>path_img <span class="op">=</span> <span class="st">"/opt/data/kang_counts_25k.h5ad"</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>path_local <span class="op">=</span> <span class="st">"kang_counts_25k.h5ad"</span></span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> os.path.exists(path_img):</span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(<span class="ss">f"Loading dataset from image: </span><span class="sc">{</span>path_img<span class="sc">}</span><span class="ss">"</span>)</span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>    adata <span class="op">=</span> sc.read(path_img)</span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a><span class="cf">else</span>:</span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(<span class="st">"Image dataset not found; using local path or downloading via backup_url."</span>)</span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a>    adata <span class="op">=</span> sc.read(</span>
+<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a>        path_local,</span>
+<span id="cb8-11"><a href="#cb8-11" aria-hidden="true" tabindex="-1"></a>        backup_url<span class="op">=</span><span class="st">"https://figshare.com/ndownloader/files/34464122"</span>,</span>
+<span id="cb8-12"><a href="#cb8-12" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb8-13"><a href="#cb8-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-14"><a href="#cb8-14" aria-hidden="true" tabindex="-1"></a>adata</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Loading dataset from image: /opt/data/kang_counts_25k.h5ad</code></pre>
+</div>
+<div class="cell-output cell-output-display" data-execution_count="3">
+<pre><code>AnnData object with n_obs × n_vars = 24673 × 15706
+    obs: 'nCount_RNA', 'nFeature_RNA', 'tsne1', 'tsne2', 'label', 'cluster', 'cell_type', 'replicate', 'nCount_SCT', 'nFeature_SCT', 'integrated_snn_res.0.4', 'seurat_clusters'
+    var: 'name'
+    obsm: 'X_pca', 'X_umap'</code></pre>
+</div>
+</div>
+<section id="confirm-required-metadata" class="level2" data-number="5.1">
+<h2 data-number="5.1" class="anchored" data-anchor-id="confirm-required-metadata"><span class="header-section-number">5.1</span> Confirm required metadata</h2>
+<div id="8c2597ef" class="cell" data-execution_count="4">
+<div class="sourceCode cell-code" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> <span class="st">"condition"</span> <span class="kw">not</span> <span class="kw">in</span> adata.obs <span class="kw">and</span> <span class="st">"label"</span> <span class="kw">in</span> adata.obs:</span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>    adata.obs[<span class="st">"condition"</span>] <span class="op">=</span> adata.obs[<span class="st">"label"</span>]</span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>required <span class="op">=</span> [<span class="st">"condition"</span>, <span class="st">"cell_type"</span>]</span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>missing <span class="op">=</span> [c <span class="cf">for</span> c <span class="kw">in</span> required <span class="cf">if</span> c <span class="kw">not</span> <span class="kw">in</span> adata.obs.columns]</span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a><span class="cf">assert</span> <span class="kw">not</span> missing, <span class="ss">f"Missing required columns in adata.obs: </span><span class="sc">{</span>missing<span class="sc">}</span><span class="ss">"</span></span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a>adata.obs[[<span class="st">"condition"</span>, <span class="st">"cell_type"</span>]].head()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display" data-execution_count="4">
+<div>
+
+
+<table class="dataframe caption-top table table-sm table-striped small" data-quarto-postprocess="true" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">condition</th>
+<th data-quarto-table-cell-role="th">cell_type</th>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">index</th>
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th"></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">AAACATACATTTCC-1</td>
+<td>ctrl</td>
+<td>CD14+ Monocytes</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">AAACATACCAGAAA-1</td>
+<td>ctrl</td>
+<td>CD14+ Monocytes</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">AAACATACCATGCA-1</td>
+<td>ctrl</td>
+<td>CD4 T cells</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">AAACATACCTCGCT-1</td>
+<td>ctrl</td>
+<td>CD14+ Monocytes</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">AAACATACCTGGTA-1</td>
+<td>ctrl</td>
+<td>Dendritic cells</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+<hr>
+</section>
+</section>
+<section id="dataset-overview" class="level1" data-number="6">
+<h1 data-number="6"><span class="header-section-number">6</span> 4. Dataset overview</h1>
+<div id="8042e259" class="cell" data-execution_count="5">
+<div class="sourceCode cell-code" id="cb12"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> textwrap <span class="im">import</span> fill</span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> wrap(text, width<span class="op">=</span><span class="dv">90</span>):</span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> fill(text, width<span class="op">=</span>width)</span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>overview <span class="op">=</span> pd.DataFrame({</span>
+<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a>    <span class="st">"Item"</span>: [</span>
+<span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a>        <span class="st">"Number of cells"</span>,</span>
+<span id="cb12-9"><a href="#cb12-9" aria-hidden="true" tabindex="-1"></a>        <span class="st">"Number of genes"</span>,</span>
+<span id="cb12-10"><a href="#cb12-10" aria-hidden="true" tabindex="-1"></a>        <span class="st">"Cell-level metadata (obs)"</span>,</span>
+<span id="cb12-11"><a href="#cb12-11" aria-hidden="true" tabindex="-1"></a>        <span class="st">"Gene-level metadata (var)"</span>,</span>
+<span id="cb12-12"><a href="#cb12-12" aria-hidden="true" tabindex="-1"></a>        <span class="st">"Embeddings available"</span></span>
+<span id="cb12-13"><a href="#cb12-13" aria-hidden="true" tabindex="-1"></a>    ],</span>
+<span id="cb12-14"><a href="#cb12-14" aria-hidden="true" tabindex="-1"></a>    <span class="st">"Summary"</span>: [</span>
+<span id="cb12-15"><a href="#cb12-15" aria-hidden="true" tabindex="-1"></a>        <span class="ss">f"</span><span class="sc">{</span>adata<span class="sc">.</span>n_obs<span class="sc">:,}</span><span class="ss">"</span>,</span>
+<span id="cb12-16"><a href="#cb12-16" aria-hidden="true" tabindex="-1"></a>        <span class="ss">f"</span><span class="sc">{</span>adata<span class="sc">.</span>n_vars<span class="sc">:,}</span><span class="ss">"</span>,</span>
+<span id="cb12-17"><a href="#cb12-17" aria-hidden="true" tabindex="-1"></a>        wrap(<span class="st">", "</span>.join(adata.obs.columns), width<span class="op">=</span><span class="dv">90</span>),</span>
+<span id="cb12-18"><a href="#cb12-18" aria-hidden="true" tabindex="-1"></a>        wrap(<span class="st">", "</span>.join(adata.var.columns), width<span class="op">=</span><span class="dv">90</span>),</span>
+<span id="cb12-19"><a href="#cb12-19" aria-hidden="true" tabindex="-1"></a>        <span class="st">", "</span>.join(adata.obsm.keys())</span>
+<span id="cb12-20"><a href="#cb12-20" aria-hidden="true" tabindex="-1"></a>    ]</span>
+<span id="cb12-21"><a href="#cb12-21" aria-hidden="true" tabindex="-1"></a>})</span>
+<span id="cb12-22"><a href="#cb12-22" aria-hidden="true" tabindex="-1"></a>overview</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display" data-execution_count="5">
+<div>
+
+
+<table class="dataframe caption-top table table-sm table-striped small" data-quarto-postprocess="true" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">Item</th>
+<th data-quarto-table-cell-role="th">Summary</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">0</td>
+<td>Number of cells</td>
+<td>24,673</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">1</td>
+<td>Number of genes</td>
+<td>15,706</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">2</td>
+<td>Cell-level metadata (obs)</td>
+<td>nCount_RNA, nFeature_RNA, tsne1, tsne2, label,...</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">3</td>
+<td>Gene-level metadata (var)</td>
+<td>name</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">4</td>
+<td>Embeddings available</td>
+<td>X_pca, X_umap</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+<section id="categorical-distributions" class="level2" data-number="6.1">
+<h2 data-number="6.1" class="anchored" data-anchor-id="categorical-distributions"><span class="header-section-number">6.1</span> Categorical distributions</h2>
+<div id="0620499e" class="cell" data-execution_count="6">
+<div class="sourceCode cell-code" id="cb13"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> summarize_categorical(adata, col):</span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>    vc <span class="op">=</span> adata.obs[col].value_counts()</span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> vc.reset_index().rename(columns<span class="op">=</span>{<span class="st">"index"</span>: col, col: <span class="st">"n_cells"</span>})</span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> col <span class="kw">in</span> [<span class="st">"condition"</span>, <span class="st">"cell_type"</span>, <span class="st">"replicate"</span>]:</span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> col <span class="kw">in</span> adata.obs:</span>
+<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a>        display(summarize_categorical(adata, col).head(<span class="dv">50</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+<div>
+
+
+<table class="dataframe caption-top table table-sm table-striped small" data-quarto-postprocess="true" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">n_cells</th>
+<th data-quarto-table-cell-role="th">count</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">0</td>
+<td>stim</td>
+<td>12358</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">1</td>
+<td>ctrl</td>
+<td>12315</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+<div class="cell-output cell-output-display">
+<div>
+
+
+<table class="dataframe caption-top table table-sm table-striped small" data-quarto-postprocess="true" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">n_cells</th>
+<th data-quarto-table-cell-role="th">count</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">0</td>
+<td>CD4 T cells</td>
+<td>11238</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">1</td>
+<td>CD14+ Monocytes</td>
+<td>5697</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">2</td>
+<td>B cells</td>
+<td>2651</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">3</td>
+<td>NK cells</td>
+<td>1716</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">4</td>
+<td>CD8 T cells</td>
+<td>1621</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">5</td>
+<td>FCGR3A+ Monocytes</td>
+<td>1089</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">6</td>
+<td>Dendritic cells</td>
+<td>529</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">7</td>
+<td>Megakaryocytes</td>
+<td>132</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+<div class="cell-output cell-output-display">
+<div>
+
+
+<table class="dataframe caption-top table table-sm table-striped small" data-quarto-postprocess="true" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">n_cells</th>
+<th data-quarto-table-cell-role="th">count</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">0</td>
+<td>patient_1015</td>
+<td>5090</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">1</td>
+<td>patient_1488</td>
+<td>4580</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">2</td>
+<td>patient_1256</td>
+<td>4134</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">3</td>
+<td>patient_1016</td>
+<td>3358</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">4</td>
+<td>patient_1244</td>
+<td>3343</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">5</td>
+<td>patient_101</td>
+<td>2024</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">6</td>
+<td>patient_1039</td>
+<td>1102</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">7</td>
+<td>patient_107</td>
+<td>1042</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+<hr>
+</section>
+</section>
+<section id="preprocessing-and-gene-selection-hvgs" class="level1" data-number="7">
+<h1 data-number="7"><span class="header-section-number">7</span> 5. Preprocessing and gene selection (HVGs)</h1>
+<div id="2110fdac" class="cell" data-execution_count="7">
+<div class="sourceCode cell-code" id="cb14"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>MIN_CELLS <span class="op">=</span> <span class="dv">3</span></span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a>TARGET_SUM <span class="op">=</span> <span class="fl">1e4</span></span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a>N_TOP_GENES <span class="op">=</span> <span class="dv">3000</span></span>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a>HVG_FLAVOR <span class="op">=</span> <span class="st">"seurat_v3"</span></span>
+<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"Preprocessing choices:"</span>)</span>
+<span id="cb14-7"><a href="#cb14-7" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"  min_cells: </span><span class="sc">{</span>MIN_CELLS<span class="sc">}</span><span class="ss">"</span>)</span>
+<span id="cb14-8"><a href="#cb14-8" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"  target_sum: </span><span class="sc">{</span>TARGET_SUM<span class="sc">}</span><span class="ss">"</span>)</span>
+<span id="cb14-9"><a href="#cb14-9" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"  n_top_genes (HVGs): </span><span class="sc">{</span>N_TOP_GENES<span class="sc">}</span><span class="ss">"</span>)</span>
+<span id="cb14-10"><a href="#cb14-10" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"  HVG flavor: </span><span class="sc">{</span>HVG_FLAVOR<span class="sc">}</span><span class="ss">"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Preprocessing choices:
+  min_cells: 3
+  target_sum: 10000.0
+  n_top_genes (HVGs): 3000
+  HVG flavor: seurat_v3</code></pre>
+</div>
+</div>
+<div id="ba9838b0" class="cell" data-execution_count="8">
+<div class="sourceCode cell-code" id="cb16"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a>adata.layers[<span class="st">"counts"</span>] <span class="op">=</span> adata.X.copy()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div id="24d4234f" class="cell" data-execution_count="9">
+<div class="sourceCode cell-code" id="cb17"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a>before <span class="op">=</span> adata.n_vars</span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a>sc.pp.filter_genes(adata, min_cells<span class="op">=</span>MIN_CELLS)</span>
+<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a>after <span class="op">=</span> adata.n_vars</span>
+<span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"Genes: </span><span class="sc">{</span>before<span class="sc">}</span><span class="ss"> -&gt; </span><span class="sc">{</span>after<span class="sc">}</span><span class="ss"> after min_cells=</span><span class="sc">{</span>MIN_CELLS<span class="sc">}</span><span class="ss">"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Genes: 15706 -&gt; 15706 after min_cells=3</code></pre>
+</div>
+</div>
+<div id="8ae7ebeb" class="cell" data-execution_count="10">
+<div class="sourceCode cell-code" id="cb19"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a>sc.pp.normalize_total(adata, target_sum<span class="op">=</span>TARGET_SUM)</span>
+<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a>sc.pp.log1p(adata)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div id="4470e1cc" class="cell" data-execution_count="11">
+<div class="sourceCode cell-code" id="cb20"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a>sc.pp.highly_variable_genes(</span>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a>    adata,</span>
+<span id="cb20-3"><a href="#cb20-3" aria-hidden="true" tabindex="-1"></a>    n_top_genes<span class="op">=</span>N_TOP_GENES,</span>
+<span id="cb20-4"><a href="#cb20-4" aria-hidden="true" tabindex="-1"></a>    flavor<span class="op">=</span>HVG_FLAVOR,</span>
+<span id="cb20-5"><a href="#cb20-5" aria-hidden="true" tabindex="-1"></a>    layer<span class="op">=</span><span class="st">"counts"</span>,</span>
+<span id="cb20-6"><a href="#cb20-6" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb20-7"><a href="#cb20-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-8"><a href="#cb20-8" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"HVGs selected:"</span>, <span class="bu">int</span>(adata.var[<span class="st">"highly_variable"</span>].<span class="bu">sum</span>()))</span>
+<span id="cb20-9"><a href="#cb20-9" aria-hidden="true" tabindex="-1"></a>adata <span class="op">=</span> adata[:, adata.var[<span class="st">"highly_variable"</span>]].copy()</span>
+<span id="cb20-10"><a href="#cb20-10" aria-hidden="true" tabindex="-1"></a>adata</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>HVGs selected: 3000</code></pre>
+</div>
+<div class="cell-output cell-output-display" data-execution_count="11">
+<pre><code>AnnData object with n_obs × n_vars = 24673 × 3000
+    obs: 'nCount_RNA', 'nFeature_RNA', 'tsne1', 'tsne2', 'label', 'cluster', 'cell_type', 'replicate', 'nCount_SCT', 'nFeature_SCT', 'integrated_snn_res.0.4', 'seurat_clusters', 'condition'
+    var: 'name', 'n_cells', 'highly_variable', 'highly_variable_rank', 'means', 'variances', 'variances_norm'
+    uns: 'log1p', 'hvg'
+    obsm: 'X_pca', 'X_umap'
+    layers: 'counts'</code></pre>
+</div>
+</div>
+<hr>
+</section>
+<section id="prepare-data-for-cogaps" class="level1" data-number="8">
+<h1 data-number="8"><span class="header-section-number">8</span> 6. Prepare data for CoGAPS</h1>
+<div id="e51a8bc5" class="cell" data-execution_count="12">
+<div class="sourceCode cell-code" id="cb23"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a>adata_cogaps <span class="op">=</span> adata.T.copy()  <span class="co"># genes × cells</span></span>
+<span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a>adata_cogaps.X <span class="op">=</span> np.asarray(adata_cogaps.X.toarray(), dtype<span class="op">=</span>np.float64)</span>
+<span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-4"><a href="#cb23-4" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(adata_cogaps)</span>
+<span id="cb23-5"><a href="#cb23-5" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"Matrix dtype:"</span>, adata_cogaps.X.dtype)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>AnnData object with n_obs × n_vars = 3000 × 24673
+    obs: 'name', 'n_cells', 'highly_variable', 'highly_variable_rank', 'means', 'variances', 'variances_norm'
+    var: 'nCount_RNA', 'nFeature_RNA', 'tsne1', 'tsne2', 'label', 'cluster', 'cell_type', 'replicate', 'nCount_SCT', 'nFeature_SCT', 'integrated_snn_res.0.4', 'seurat_clusters', 'condition'
+    uns: 'log1p', 'hvg'
+    varm: 'X_pca', 'X_umap'
+    layers: 'counts'
+Matrix dtype: float64</code></pre>
+</div>
+</div>
+<hr>
+</section>
+<section id="run-cogaps-single-process-safe-for-quarto-render" class="level1" data-number="9">
+<h1 data-number="9"><span class="header-section-number">9</span> 7. Run CoGAPS (single-process; safe for Quarto render)</h1>
+<div id="2d453b68" class="cell" data-execution_count="13">
+<div class="sourceCode cell-code" id="cb25"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a>N_PATTERNS <span class="op">=</span> <span class="dv">5</span></span>
+<span id="cb25-2"><a href="#cb25-2" aria-hidden="true" tabindex="-1"></a>N_ITER <span class="op">=</span> <span class="dv">2000</span>          <span class="co"># classroom default; increase for final analysis runs</span></span>
+<span id="cb25-3"><a href="#cb25-3" aria-hidden="true" tabindex="-1"></a>SEED <span class="op">=</span> <span class="dv">42</span></span>
+<span id="cb25-4"><a href="#cb25-4" aria-hidden="true" tabindex="-1"></a>USE_SPARSE_OPT <span class="op">=</span> <span class="va">True</span></span>
+<span id="cb25-5"><a href="#cb25-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-6"><a href="#cb25-6" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"CoGAPS choices:"</span>)</span>
+<span id="cb25-7"><a href="#cb25-7" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"  nPatterns: </span><span class="sc">{</span>N_PATTERNS<span class="sc">}</span><span class="ss">"</span>)</span>
+<span id="cb25-8"><a href="#cb25-8" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"  nIterations: </span><span class="sc">{</span>N_ITER<span class="sc">}</span><span class="ss">"</span>)</span>
+<span id="cb25-9"><a href="#cb25-9" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"  seed: </span><span class="sc">{</span>SEED<span class="sc">}</span><span class="ss">"</span>)</span>
+<span id="cb25-10"><a href="#cb25-10" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"  useSparseOptimization: </span><span class="sc">{</span>USE_SPARSE_OPT<span class="sc">}</span><span class="ss">"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>CoGAPS choices:
+  nPatterns: 5
+  nIterations: 2000
+  seed: 42
+  useSparseOptimization: True</code></pre>
+</div>
+</div>
+<div id="e5f1fd8f" class="cell" data-execution_count="14">
+<div class="sourceCode cell-code" id="cb27"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a>os.makedirs(<span class="st">"data"</span>, exist_ok<span class="op">=</span><span class="va">True</span>)</span>
+<span id="cb27-2"><a href="#cb27-2" aria-hidden="true" tabindex="-1"></a>result_path <span class="op">=</span> <span class="st">"data/cogaps_result.h5ad"</span></span>
+<span id="cb27-3"><a href="#cb27-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb27-4"><a href="#cb27-4" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> os.path.exists(result_path):</span>
+<span id="cb27-5"><a href="#cb27-5" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(<span class="ss">f"Loading existing CoGAPS result: </span><span class="sc">{</span>result_path<span class="sc">}</span><span class="ss">"</span>)</span>
+<span id="cb27-6"><a href="#cb27-6" aria-hidden="true" tabindex="-1"></a>    result <span class="op">=</span> sc.read_h5ad(result_path)</span>
+<span id="cb27-7"><a href="#cb27-7" aria-hidden="true" tabindex="-1"></a><span class="cf">else</span>:</span>
+<span id="cb27-8"><a href="#cb27-8" aria-hidden="true" tabindex="-1"></a>    params <span class="op">=</span> CoParams(adata<span class="op">=</span>adata_cogaps)</span>
+<span id="cb27-9"><a href="#cb27-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb27-10"><a href="#cb27-10" aria-hidden="true" tabindex="-1"></a>    setParams(</span>
+<span id="cb27-11"><a href="#cb27-11" aria-hidden="true" tabindex="-1"></a>        params,</span>
+<span id="cb27-12"><a href="#cb27-12" aria-hidden="true" tabindex="-1"></a>        {</span>
+<span id="cb27-13"><a href="#cb27-13" aria-hidden="true" tabindex="-1"></a>            <span class="st">"nPatterns"</span>: N_PATTERNS,</span>
+<span id="cb27-14"><a href="#cb27-14" aria-hidden="true" tabindex="-1"></a>            <span class="st">"nIterations"</span>: N_ITER,</span>
+<span id="cb27-15"><a href="#cb27-15" aria-hidden="true" tabindex="-1"></a>            <span class="st">"seed"</span>: SEED,</span>
+<span id="cb27-16"><a href="#cb27-16" aria-hidden="true" tabindex="-1"></a>            <span class="st">"useSparseOptimization"</span>: USE_SPARSE_OPT,</span>
+<span id="cb27-17"><a href="#cb27-17" aria-hidden="true" tabindex="-1"></a>            <span class="co"># </span><span class="al">NOTE</span><span class="co">: Do NOT set "distributed" inside this notebook.</span></span>
+<span id="cb27-18"><a href="#cb27-18" aria-hidden="true" tabindex="-1"></a>        },</span>
+<span id="cb27-19"><a href="#cb27-19" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb27-20"><a href="#cb27-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb27-21"><a href="#cb27-21" aria-hidden="true" tabindex="-1"></a>    params.printParams()</span>
+<span id="cb27-22"><a href="#cb27-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb27-23"><a href="#cb27-23" aria-hidden="true" tabindex="-1"></a>    start <span class="op">=</span> time.time()</span>
+<span id="cb27-24"><a href="#cb27-24" aria-hidden="true" tabindex="-1"></a>    result <span class="op">=</span> CoGAPS(adata_cogaps, params)</span>
+<span id="cb27-25"><a href="#cb27-25" aria-hidden="true" tabindex="-1"></a>    elapsed <span class="op">=</span> time.time() <span class="op">-</span> start</span>
+<span id="cb27-26"><a href="#cb27-26" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb27-27"><a href="#cb27-27" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(<span class="ss">f"CoGAPS finished in </span><span class="sc">{</span>elapsed<span class="op">/</span><span class="dv">60</span><span class="sc">:.2f}</span><span class="ss"> minutes"</span>)</span>
+<span id="cb27-28"><a href="#cb27-28" aria-hidden="true" tabindex="-1"></a>    result.write_h5ad(result_path)</span>
+<span id="cb27-29"><a href="#cb27-29" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(<span class="ss">f"Saved: </span><span class="sc">{</span>result_path<span class="sc">}</span><span class="ss">"</span>)</span>
+<span id="cb27-30"><a href="#cb27-30" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb27-31"><a href="#cb27-31" aria-hidden="true" tabindex="-1"></a>result</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+-- Standard Parameters --
+nPatterns:  5
+nIterations:  2000
+seed:  42
+sparseOptimization:  True
+
+
+-- Sparsity Parameters --
+alpha: 0.01
+maxGibbsMass:  100.0
+
+
+
+This is pycogaps version  0.0.1
+Running Standard CoGAPS on provided data object ( 3000 genes and 24673 samples) with parameters: 
+
+-- Standard Parameters --
+nPatterns:  5
+nIterations:  2000
+seed:  42
+sparseOptimization:  True
+
+
+-- Sparsity Parameters --
+alpha: 0.01
+maxGibbsMass:  100.0
+
+
+Data Model: Sparse, Normal
+Sampler Type: Sequential
+Loading Data...Done! (00:00:05)
+-- Equilibration Phase --
+1000 of 2000, Atoms: 7037(A), 81009(P), ChiSq: 224104224, Time: 00:13:47 / 01:08:06
+2000 of 2000, Atoms: 7170(A), 84420(P), ChiSq: 224088480, Time: 00:39:07 / 01:26:28
+-- Sampling Phase --
+1000 of 2000, Atoms: 7133(A), 84867(P), ChiSq: 224078848, Time: 01:05:47 / 01:31:20
+2000 of 2000, Atoms: 7156(A), 85486(P), ChiSq: 224084368, Time: 01:32:28 / 01:32:29
+
+GapsResult result object with 3000 features and 24673 samples
+5 patterns were learned
+
+CoGAPS finished in 96.71 minutes
+Saved: data/cogaps_result.h5ad</code></pre>
+</div>
+<div class="cell-output cell-output-display" data-execution_count="14">
+<pre><code>AnnData object with n_obs × n_vars = 3000 × 24673
+    obs: 'Pattern1', 'Pattern2', 'Pattern3', 'Pattern4', 'Pattern5'
+    var: 'Pattern1', 'Pattern2', 'Pattern3', 'Pattern4', 'Pattern5'
+    uns: 'log1p', 'hvg', 'asd', 'psd', 'atomhistoryA', 'atomhistoryP', 'averageQueueLengthA', 'averageQueueLengthP', 'chisqHistory', 'equilibrationSnapshotsA', 'equilibrationSnapshotsP', 'meanChiSq', 'meanPatternAssignment', 'pumpMatrix', 'samplingSnapshotsA', 'samplingSnapshotsP', 'seed', 'totalRunningTime', 'totalUpdates'
+    varm: 'X_pca', 'X_umap'
+    layers: 'counts'</code></pre>
+</div>
+</div>
+<hr>
+</section>
+<section id="extract-matrices-a-and-p" class="level1" data-number="10">
+<h1 data-number="10"><span class="header-section-number">10</span> 8. Extract matrices A and P</h1>
+<div id="c50631cf" class="cell" data-execution_count="15">
+<div class="sourceCode cell-code" id="cb30"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a>A <span class="op">=</span> result.obs.<span class="bu">filter</span>(regex<span class="op">=</span><span class="st">"Pattern"</span>)   <span class="co"># genes × patterns</span></span>
+<span id="cb30-2"><a href="#cb30-2" aria-hidden="true" tabindex="-1"></a>P <span class="op">=</span> result.var.<span class="bu">filter</span>(regex<span class="op">=</span><span class="st">"Pattern"</span>)   <span class="co"># cells × patterns</span></span>
+<span id="cb30-3"><a href="#cb30-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb30-4"><a href="#cb30-4" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"A:"</span>, A.shape, <span class="st">"| P:"</span>, P.shape)</span>
+<span id="cb30-5"><a href="#cb30-5" aria-hidden="true" tabindex="-1"></a>A.head()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>A: (3000, 5) | P: (24673, 5)</code></pre>
+</div>
+<div class="cell-output cell-output-display" data-execution_count="15">
+<div>
+
+
+<table class="dataframe caption-top table table-sm table-striped small" data-quarto-postprocess="true" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">Pattern1</th>
+<th data-quarto-table-cell-role="th">Pattern2</th>
+<th data-quarto-table-cell-role="th">Pattern3</th>
+<th data-quarto-table-cell-role="th">Pattern4</th>
+<th data-quarto-table-cell-role="th">Pattern5</th>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">index</th>
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th"></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">HES4</td>
+<td>8.869731e-01</td>
+<td>0.000066</td>
+<td>0.034495</td>
+<td>4.080607e-07</td>
+<td>0.119681</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">ISG15</td>
+<td>7.786111e+00</td>
+<td>0.193520</td>
+<td>9.729788</td>
+<td>1.386710e-01</td>
+<td>0.087393</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">TNFRSF18</td>
+<td>7.651962e-07</td>
+<td>0.089479</td>
+<td>0.012613</td>
+<td>1.092226e-06</td>
+<td>0.060679</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">TNFRSF4</td>
+<td>4.344390e-07</td>
+<td>0.099483</td>
+<td>0.012404</td>
+<td>3.774059e-07</td>
+<td>0.053363</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">FAM132A</td>
+<td>1.638925e-04</td>
+<td>0.000007</td>
+<td>0.000008</td>
+<td>2.965539e-05</td>
+<td>0.000421</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+<hr>
+</section>
+<section id="attach-pattern-activities-back-to-cells" class="level1" data-number="11">
+<h1 data-number="11"><span class="header-section-number">11</span> 9. Attach pattern activities back to cells</h1>
+<div id="af324c8e" class="cell" data-execution_count="16">
+<div class="sourceCode cell-code" id="cb32"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a>P_cells <span class="op">=</span> P.copy()</span>
+<span id="cb32-2"><a href="#cb32-2" aria-hidden="true" tabindex="-1"></a>P_cells.index <span class="op">=</span> adata.obs_names</span>
+<span id="cb32-3"><a href="#cb32-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb32-4"><a href="#cb32-4" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> col <span class="kw">in</span> P_cells.columns:</span>
+<span id="cb32-5"><a href="#cb32-5" aria-hidden="true" tabindex="-1"></a>    adata.obs[col] <span class="op">=</span> P_cells[col].values</span>
+<span id="cb32-6"><a href="#cb32-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb32-7"><a href="#cb32-7" aria-hidden="true" tabindex="-1"></a>pattern_names <span class="op">=</span> <span class="bu">list</span>(P_cells.columns)</span>
+<span id="cb32-8"><a href="#cb32-8" aria-hidden="true" tabindex="-1"></a>pattern_names[:<span class="dv">5</span>], adata.obs[pattern_names].head()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display" data-execution_count="16">
+<pre><code>(['Pattern1', 'Pattern2', 'Pattern3', 'Pattern4', 'Pattern5'],
+                   Pattern1  Pattern2  Pattern3  Pattern4  Pattern5
+ index                                                             
+ AAACATACATTTCC-1  0.021165  0.000324  0.000010  0.603660  0.354534
+ AAACATACCAGAAA-1  0.000168  0.062531  0.000055  0.535007  0.052376
+ AAACATACCATGCA-1  0.000536  0.105730  0.000097  0.000041  0.000028
+ AAACATACCTCGCT-1  0.000000  0.000031  0.029962  0.535511  0.202357
+ AAACATACCTGGTA-1  0.000023  0.100462  0.055379  0.091730  0.548743)</code></pre>
+</div>
+</div>
+<hr>
+</section>
+<section id="q1-which-programs-respond-to-ifn-β-stimulation" class="level1" data-number="12">
+<h1 data-number="12"><span class="header-section-number">12</span> 10. Q1 — Which programs respond to IFN-β stimulation?</h1>
+<div id="1c66ebaf" class="cell" data-execution_count="17">
+<div class="sourceCode cell-code" id="cb34"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb34-1"><a href="#cb34-1" aria-hidden="true" tabindex="-1"></a>cond <span class="op">=</span> (adata.obs[<span class="st">"condition"</span>] <span class="op">==</span> <span class="st">"stim"</span>).astype(<span class="bu">int</span>)</span>
+<span id="cb34-2"><a href="#cb34-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb34-3"><a href="#cb34-3" aria-hidden="true" tabindex="-1"></a>corrs <span class="op">=</span> {pat: np.corrcoef(adata.obs[pat], cond)[<span class="dv">0</span>, <span class="dv">1</span>] <span class="cf">for</span> pat <span class="kw">in</span> pattern_names}</span>
+<span id="cb34-4"><a href="#cb34-4" aria-hidden="true" tabindex="-1"></a>corr_series <span class="op">=</span> pd.Series(corrs).sort_values(ascending<span class="op">=</span><span class="va">False</span>)</span>
+<span id="cb34-5"><a href="#cb34-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb34-6"><a href="#cb34-6" aria-hidden="true" tabindex="-1"></a>corr_table <span class="op">=</span> (</span>
+<span id="cb34-7"><a href="#cb34-7" aria-hidden="true" tabindex="-1"></a>    corr_series.rename(<span class="st">"Correlation with IFN-β stimulation (stim=1, ctrl=0)"</span>)</span>
+<span id="cb34-8"><a href="#cb34-8" aria-hidden="true" tabindex="-1"></a>    .to_frame()</span>
+<span id="cb34-9"><a href="#cb34-9" aria-hidden="true" tabindex="-1"></a>    .<span class="bu">round</span>(<span class="dv">3</span>)</span>
+<span id="cb34-10"><a href="#cb34-10" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb34-11"><a href="#cb34-11" aria-hidden="true" tabindex="-1"></a>corr_table</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display" data-execution_count="17">
+<div>
+
+
+<table class="dataframe caption-top table table-sm table-striped small" data-quarto-postprocess="true" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">Correlation with IFN-β stimulation (stim=1, ctrl=0)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">Pattern3</td>
+<td>0.754</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">Pattern1</td>
+<td>0.368</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">Pattern5</td>
+<td>0.003</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">Pattern2</td>
+<td>-0.222</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">Pattern4</td>
+<td>-0.282</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+<div id="6be2da86" class="cell" data-execution_count="18">
+<div class="sourceCode cell-code" id="cb35"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb35-1"><a href="#cb35-1" aria-hidden="true" tabindex="-1"></a>isg_pattern <span class="op">=</span> corr_series.index[<span class="dv">0</span>]</span>
+<span id="cb35-2"><a href="#cb35-2" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"Top IFN-associated pattern:"</span>, isg_pattern, <span class="st">"corr ="</span>, <span class="bu">round</span>(<span class="bu">float</span>(corr_series.iloc[<span class="dv">0</span>]), <span class="dv">3</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Top IFN-associated pattern: Pattern3 corr = 0.754</code></pre>
+</div>
+</div>
+<div id="be0bd1ef" class="cell" data-execution_count="19">
+<div class="sourceCode cell-code" id="cb37"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb37-1"><a href="#cb37-1" aria-hidden="true" tabindex="-1"></a>top_isg_genes <span class="op">=</span> A[isg_pattern].sort_values(ascending<span class="op">=</span><span class="va">False</span>).head(<span class="dv">30</span>)</span>
+<span id="cb37-2"><a href="#cb37-2" aria-hidden="true" tabindex="-1"></a>top_isg_genes</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display" data-execution_count="19">
+<pre><code>index
+ISG15      9.729788
+ISG20      8.411927
+IFI6       6.574230
+IFIT3      4.840949
+LY6E       4.476941
+IFIT1      3.927450
+MX1        3.811948
+FTH1       3.136555
+SAT1       1.564118
+IFIT2      1.552952
+IRF7       1.501965
+TNFSF10    1.358840
+OAS1       1.305752
+PLSCR1     1.143213
+BST2       1.059330
+MT2A       0.979870
+EPSTI1     0.919135
+RSAD2      0.875062
+OASL       0.850032
+IFITM2     0.835703
+DYNLT1     0.789838
+IFI35      0.768422
+HSPA8      0.672058
+GBP1       0.671257
+SAMD9L     0.618101
+DNAJA1     0.592183
+SOCS1      0.578768
+NT5C3A     0.544956
+SELL       0.539262
+CARD16     0.493254
+Name: Pattern3, dtype: float64</code></pre>
+</div>
+</div>
+<hr>
+</section>
+<section id="q2-identity-vs-activity-programs" class="level1" data-number="13">
+<h1 data-number="13"><span class="header-section-number">13</span> 11. Q2 — Identity vs activity programs</h1>
+<div id="1a70c101" class="cell" data-execution_count="20">
+<div class="sourceCode cell-code" id="cb39"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb39-1"><a href="#cb39-1" aria-hidden="true" tabindex="-1"></a>mean_by_cond <span class="op">=</span> adata.obs.groupby(<span class="st">"condition"</span>)[pattern_names].mean()</span>
+<span id="cb39-2"><a href="#cb39-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb39-3"><a href="#cb39-3" aria-hidden="true" tabindex="-1"></a>plt.figure(figsize<span class="op">=</span>(<span class="dv">9</span>, <span class="dv">3</span>))</span>
+<span id="cb39-4"><a href="#cb39-4" aria-hidden="true" tabindex="-1"></a>sns.heatmap(mean_by_cond, annot<span class="op">=</span><span class="va">True</span>, fmt<span class="op">=</span><span class="st">".2f"</span>)</span>
+<span id="cb39-5"><a href="#cb39-5" aria-hidden="true" tabindex="-1"></a>plt.title(<span class="st">"Mean CoGAPS pattern activity by condition"</span>)</span>
+<span id="cb39-6"><a href="#cb39-6" aria-hidden="true" tabindex="-1"></a>plt.ylabel(<span class="st">"Condition"</span>)</span>
+<span id="cb39-7"><a href="#cb39-7" aria-hidden="true" tabindex="-1"></a>plt.xlabel(<span class="st">"Pattern"</span>)</span>
+<span id="cb39-8"><a href="#cb39-8" aria-hidden="true" tabindex="-1"></a>plt.tight_layout()</span>
+<span id="cb39-9"><a href="#cb39-9" aria-hidden="true" tabindex="-1"></a>plt.show()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="cogaps_case_study4_student_files/figure-html/cell-21-output-1.png" width="897" height="318" class="figure-img"></p>
+</figure>
+</div>
+</div>
+</div>
+<div id="ce5de914" class="cell" data-execution_count="21">
+<div class="sourceCode cell-code" id="cb40"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb40-1"><a href="#cb40-1" aria-hidden="true" tabindex="-1"></a>mean_by_type <span class="op">=</span> adata.obs.groupby(<span class="st">"cell_type"</span>)[pattern_names].mean()</span>
+<span id="cb40-2"><a href="#cb40-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb40-3"><a href="#cb40-3" aria-hidden="true" tabindex="-1"></a>sns.clustermap(mean_by_type, figsize<span class="op">=</span>(<span class="dv">10</span>, <span class="dv">8</span>), standard_scale<span class="op">=</span><span class="dv">0</span>)</span>
+<span id="cb40-4"><a href="#cb40-4" aria-hidden="true" tabindex="-1"></a>plt.suptitle(<span class="st">"Pattern activity by immune cell type"</span>, y<span class="op">=</span><span class="fl">1.02</span>)</span>
+<span id="cb40-5"><a href="#cb40-5" aria-hidden="true" tabindex="-1"></a>plt.show()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="cogaps_case_study4_student_files/figure-html/cell-22-output-1.png" width="1087" height="902" class="figure-img"></p>
+</figure>
+</div>
+</div>
+</div>
+<div id="b23fb013" class="cell" data-execution_count="22">
+<div class="sourceCode cell-code" id="cb41"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb41-1"><a href="#cb41-1" aria-hidden="true" tabindex="-1"></a>sc.pl.stacked_violin(</span>
+<span id="cb41-2"><a href="#cb41-2" aria-hidden="true" tabindex="-1"></a>    adata,</span>
+<span id="cb41-3"><a href="#cb41-3" aria-hidden="true" tabindex="-1"></a>    pattern_names,</span>
+<span id="cb41-4"><a href="#cb41-4" aria-hidden="true" tabindex="-1"></a>    groupby<span class="op">=</span><span class="st">"cell_type"</span>,</span>
+<span id="cb41-5"><a href="#cb41-5" aria-hidden="true" tabindex="-1"></a>    figsize<span class="op">=</span>(<span class="dv">14</span>, <span class="dv">10</span>),</span>
+<span id="cb41-6"><a href="#cb41-6" aria-hidden="true" tabindex="-1"></a>    stripplot<span class="op">=</span><span class="va">False</span>,</span>
+<span id="cb41-7"><a href="#cb41-7" aria-hidden="true" tabindex="-1"></a>    scale<span class="op">=</span><span class="st">"width"</span>,</span>
+<span id="cb41-8"><a href="#cb41-8" aria-hidden="true" tabindex="-1"></a>    yticklabels<span class="op">=</span><span class="va">True</span>,</span>
+<span id="cb41-9"><a href="#cb41-9" aria-hidden="true" tabindex="-1"></a>    use_raw<span class="op">=</span><span class="va">False</span>,</span>
+<span id="cb41-10"><a href="#cb41-10" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="cogaps_case_study4_student_files/figure-html/cell-23-output-1.png" width="1361" height="933" class="figure-img"></p>
+</figure>
+</div>
+</div>
+</div>
+<div id="7cfc8ef3" class="cell" data-execution_count="23">
+<div class="sourceCode cell-code" id="cb42"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb42-1"><a href="#cb42-1" aria-hidden="true" tabindex="-1"></a>sc.pl.stacked_violin(</span>
+<span id="cb42-2"><a href="#cb42-2" aria-hidden="true" tabindex="-1"></a>    adata,</span>
+<span id="cb42-3"><a href="#cb42-3" aria-hidden="true" tabindex="-1"></a>    pattern_names,</span>
+<span id="cb42-4"><a href="#cb42-4" aria-hidden="true" tabindex="-1"></a>    groupby<span class="op">=</span><span class="st">"condition"</span>,</span>
+<span id="cb42-5"><a href="#cb42-5" aria-hidden="true" tabindex="-1"></a>    figsize<span class="op">=</span>(<span class="dv">12</span>, <span class="dv">6</span>),</span>
+<span id="cb42-6"><a href="#cb42-6" aria-hidden="true" tabindex="-1"></a>    stripplot<span class="op">=</span><span class="va">False</span>,</span>
+<span id="cb42-7"><a href="#cb42-7" aria-hidden="true" tabindex="-1"></a>    scale<span class="op">=</span><span class="st">"width"</span>,</span>
+<span id="cb42-8"><a href="#cb42-8" aria-hidden="true" tabindex="-1"></a>    yticklabels<span class="op">=</span><span class="va">True</span>,</span>
+<span id="cb42-9"><a href="#cb42-9" aria-hidden="true" tabindex="-1"></a>    use_raw<span class="op">=</span><span class="va">False</span>,</span>
+<span id="cb42-10"><a href="#cb42-10" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="cogaps_case_study4_student_files/figure-html/cell-24-output-1.png" width="1083" height="594" class="figure-img"></p>
+</figure>
+</div>
+</div>
+</div>
+<hr>
+</section>
+<section id="visualize-programs-on-umap" class="level1" data-number="14">
+<h1 data-number="14"><span class="header-section-number">14</span> 12. Visualize programs on UMAP</h1>
+<div id="bdc599d4" class="cell" data-execution_count="24">
+<div class="sourceCode cell-code" id="cb43"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb43-1"><a href="#cb43-1" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> <span class="st">"X_umap"</span> <span class="kw">not</span> <span class="kw">in</span> adata.obsm:</span>
+<span id="cb43-2"><a href="#cb43-2" aria-hidden="true" tabindex="-1"></a>    sc.pp.pca(adata)</span>
+<span id="cb43-3"><a href="#cb43-3" aria-hidden="true" tabindex="-1"></a>    sc.pp.neighbors(adata)</span>
+<span id="cb43-4"><a href="#cb43-4" aria-hidden="true" tabindex="-1"></a>    sc.tl.umap(adata)</span>
+<span id="cb43-5"><a href="#cb43-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb43-6"><a href="#cb43-6" aria-hidden="true" tabindex="-1"></a>sc.pl.umap(adata, color<span class="op">=</span>[<span class="st">"condition"</span>, isg_pattern], color_map<span class="op">=</span><span class="st">"viridis"</span>, wspace<span class="op">=</span><span class="fl">0.4</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="cogaps_case_study4_student_files/figure-html/cell-25-output-1.png" width="1748" height="489" class="figure-img"></p>
+</figure>
+</div>
+</div>
+</div>
+<div id="af78ee84" class="cell" data-execution_count="25">
+<div class="sourceCode cell-code" id="cb44"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb44-1"><a href="#cb44-1" aria-hidden="true" tabindex="-1"></a>sc.pl.umap(adata, color<span class="op">=</span>pattern_names, color_map<span class="op">=</span><span class="st">"viridis"</span>, ncols<span class="op">=</span><span class="dv">3</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="cogaps_case_study4_student_files/figure-html/cell-26-output-1.png" width="2114" height="968" class="figure-img"></p>
+</figure>
+</div>
+</div>
+</div>
+<hr>
+</section>
+<section id="q3-ifn-program-strength-across-immune-cell-types" class="level1" data-number="15">
+<h1 data-number="15"><span class="header-section-number">15</span> 13. Q3 — IFN program strength across immune cell types</h1>
+<div id="677fae72" class="cell" data-execution_count="26">
+<div class="sourceCode cell-code" id="cb45"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb45-1"><a href="#cb45-1" aria-hidden="true" tabindex="-1"></a>df_isg <span class="op">=</span> adata.obs[[<span class="st">"cell_type"</span>, <span class="st">"condition"</span>, isg_pattern]].copy()</span>
+<span id="cb45-2"><a href="#cb45-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb45-3"><a href="#cb45-3" aria-hidden="true" tabindex="-1"></a>summary_by_type <span class="op">=</span> (</span>
+<span id="cb45-4"><a href="#cb45-4" aria-hidden="true" tabindex="-1"></a>    df_isg.groupby(<span class="st">"cell_type"</span>)[isg_pattern]</span>
+<span id="cb45-5"><a href="#cb45-5" aria-hidden="true" tabindex="-1"></a>    .agg([<span class="st">"mean"</span>, <span class="st">"median"</span>, <span class="st">"std"</span>, <span class="st">"count"</span>])</span>
+<span id="cb45-6"><a href="#cb45-6" aria-hidden="true" tabindex="-1"></a>    .sort_values(<span class="st">"mean"</span>, ascending<span class="op">=</span><span class="va">False</span>)</span>
+<span id="cb45-7"><a href="#cb45-7" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb45-8"><a href="#cb45-8" aria-hidden="true" tabindex="-1"></a>summary_by_type</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display" data-execution_count="26">
+<div>
+
+
+<table class="dataframe caption-top table table-sm table-striped small" data-quarto-postprocess="true" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">mean</th>
+<th data-quarto-table-cell-role="th">median</th>
+<th data-quarto-table-cell-role="th">std</th>
+<th data-quarto-table-cell-role="th">count</th>
+</tr>
+<tr class="odd">
+<th data-quarto-table-cell-role="th">cell_type</th>
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th"></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">NK cells</td>
+<td>0.212108</td>
+<td>0.095603</td>
+<td>0.234213</td>
+<td>1716</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">B cells</td>
+<td>0.209827</td>
+<td>0.098393</td>
+<td>0.232936</td>
+<td>2651</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">Dendritic cells</td>
+<td>0.198690</td>
+<td>0.139271</td>
+<td>0.201105</td>
+<td>529</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">FCGR3A+ Monocytes</td>
+<td>0.176960</td>
+<td>0.115439</td>
+<td>0.184994</td>
+<td>1089</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">CD8 T cells</td>
+<td>0.166573</td>
+<td>0.060829</td>
+<td>0.197121</td>
+<td>1621</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">CD4 T cells</td>
+<td>0.158124</td>
+<td>0.054270</td>
+<td>0.186064</td>
+<td>11238</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">CD14+ Monocytes</td>
+<td>0.092249</td>
+<td>0.013830</td>
+<td>0.125468</td>
+<td>5697</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">Megakaryocytes</td>
+<td>0.028124</td>
+<td>0.000174</td>
+<td>0.074185</td>
+<td>132</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+<div id="6216e4df" class="cell" data-execution_count="27">
+<div class="sourceCode cell-code" id="cb46"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb46-1"><a href="#cb46-1" aria-hidden="true" tabindex="-1"></a>plt.figure(figsize<span class="op">=</span>(<span class="dv">12</span>, <span class="dv">5</span>))</span>
+<span id="cb46-2"><a href="#cb46-2" aria-hidden="true" tabindex="-1"></a>sns.boxplot(data<span class="op">=</span>df_isg, x<span class="op">=</span><span class="st">"cell_type"</span>, y<span class="op">=</span>isg_pattern, hue<span class="op">=</span><span class="st">"condition"</span>)</span>
+<span id="cb46-3"><a href="#cb46-3" aria-hidden="true" tabindex="-1"></a>plt.xticks(rotation<span class="op">=</span><span class="dv">45</span>, ha<span class="op">=</span><span class="st">"right"</span>)</span>
+<span id="cb46-4"><a href="#cb46-4" aria-hidden="true" tabindex="-1"></a>plt.ylabel(<span class="ss">f"</span><span class="sc">{</span>isg_pattern<span class="sc">}</span><span class="ss"> activity"</span>)</span>
+<span id="cb46-5"><a href="#cb46-5" aria-hidden="true" tabindex="-1"></a>plt.title(<span class="st">"IFN-response program activity by cell type and condition"</span>)</span>
+<span id="cb46-6"><a href="#cb46-6" aria-hidden="true" tabindex="-1"></a>plt.tight_layout()</span>
+<span id="cb46-7"><a href="#cb46-7" aria-hidden="true" tabindex="-1"></a>plt.show()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="cogaps_case_study4_student_files/figure-html/cell-28-output-1.png" width="1308" height="537" class="figure-img"></p>
+</figure>
+</div>
+</div>
+</div>
+<hr>
+</section>
+<section id="pattern-gene-summaries-interpretability" class="level1" data-number="16">
+<h1 data-number="16"><span class="header-section-number">16</span> 14. Pattern gene summaries (interpretability)</h1>
+<div id="1a261c5d" class="cell" data-execution_count="28">
+<div class="sourceCode cell-code" id="cb47"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb47-1"><a href="#cb47-1" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> pat <span class="kw">in</span> pattern_names:</span>
+<span id="cb47-2"><a href="#cb47-2" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(<span class="ss">f"</span><span class="ch">\n</span><span class="ss">=== </span><span class="sc">{</span>pat<span class="sc">}</span><span class="ss">: top genes ==="</span>)</span>
+<span id="cb47-3"><a href="#cb47-3" aria-hidden="true" tabindex="-1"></a>    display(A[pat].sort_values(ascending<span class="op">=</span><span class="va">False</span>).head(<span class="dv">12</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+=== Pattern1: top genes ===</code></pre>
+</div>
+<div class="cell-output cell-output-display">
+<pre><code>index
+CXCL10      7.965004
+ISG15       7.786111
+APOBEC3A    7.378877
+IFITM3      7.223546
+FTL         6.594434
+FTH1        5.790112
+TNFSF10     5.739016
+SAT1        5.732905
+SOD2        5.609220
+RSAD2       5.306476
+TYMP        5.133949
+TYROBP      5.057149
+Name: Pattern1, dtype: float64</code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+=== Pattern2: top genes ===</code></pre>
+</div>
+<div class="cell-output cell-output-display">
+<pre><code>index
+FTH1        12.957394
+FTL          5.636801
+ACTB         5.237462
+PFN1         3.592000
+SH3BGRL3     2.987683
+VIM          1.967796
+ANXA1        1.788872
+GAPDH        1.497803
+CCR7         1.295715
+HSPA8        1.277352
+EMP3         1.265737
+LTB          1.167527
+Name: Pattern2, dtype: float64</code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+=== Pattern3: top genes ===</code></pre>
+</div>
+<div class="cell-output cell-output-display">
+<pre><code>index
+ISG15      9.729788
+ISG20      8.411927
+IFI6       6.574230
+IFIT3      4.840949
+LY6E       4.476941
+IFIT1      3.927450
+MX1        3.811948
+FTH1       3.136555
+SAT1       1.564118
+IFIT2      1.552952
+IRF7       1.501965
+TNFSF10    1.358840
+Name: Pattern3, dtype: float64</code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+=== Pattern4: top genes ===</code></pre>
+</div>
+<div class="cell-output cell-output-display">
+<pre><code>index
+FTH1        10.834475
+FTL          9.953378
+TIMP1        8.715867
+S100A11      6.825833
+SH3BGRL3     6.351716
+TYROBP       6.247885
+S100A10      6.144288
+ACTB         6.050305
+FCER1G       6.038208
+GAPDH        5.932955
+CD63         5.825633
+S100A6       5.682121
+Name: Pattern4, dtype: float64</code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+=== Pattern5: top genes ===</code></pre>
+</div>
+<div class="cell-output cell-output-display">
+<pre><code>index
+CD74        13.175068
+HLA-DRA     11.386052
+HLA-DRB1     9.628648
+HLA-DPA1     8.524743
+HLA-DPB1     7.596040
+FTL          5.570769
+ACTB         4.928213
+FTH1         3.757450
+PFN1         3.315407
+HLA-DQB1     2.512053
+HLA-DQA1     1.977432
+HSP90AA1     1.966502
+Name: Pattern5, dtype: float64</code></pre>
+</div>
+</div>
+<hr>
+</section>
+<section id="optional-distributed-cogaps-advanced" class="level1" data-number="17">
+<h1 data-number="17"><span class="header-section-number">17</span> 15. Optional: distributed CoGAPS (advanced)</h1>
+<p>Your error happened because the distributed script is currently trying to read <code>kang_counts_25k.h5ad</code> from the <strong>project directory</strong>, then downloading a file that ends up <strong>corrupt/empty</strong> (0 bytes), which causes:</p>
+<p><code>OSError: Unable to open file (file signature not found)</code></p>
+<p>Then run distributed from <strong>Terminal</strong>:</p>
+<div class="sourceCode" id="cb58"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb58-1"><a href="#cb58-1" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> /home/rstudio/project</span>
+<span id="cb58-2"><a href="#cb58-2" aria-hidden="true" tabindex="-1"></a><span class="bu">source</span> _environment</span>
+<span id="cb58-3"><a href="#cb58-3" aria-hidden="true" tabindex="-1"></a><span class="ex">./.venv/bin/python</span> run_pycogaps_distributed.py</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<p>If you ran the script successfully and it created <code>data/cogaps_result_distributed.h5ad</code>, you can load it below.</p>
+<div id="06c886b6" class="cell" data-execution_count="29">
+<div class="sourceCode cell-code" id="cb59"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb59-1"><a href="#cb59-1" aria-hidden="true" tabindex="-1"></a>dist_path <span class="op">=</span> <span class="st">"data/cogaps_result_distributed.h5ad"</span></span>
+<span id="cb59-2"><a href="#cb59-2" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> os.path.exists(dist_path):</span>
+<span id="cb59-3"><a href="#cb59-3" aria-hidden="true" tabindex="-1"></a>    dist_result <span class="op">=</span> sc.read_h5ad(dist_path)</span>
+<span id="cb59-4"><a href="#cb59-4" aria-hidden="true" tabindex="-1"></a>    dist_result</span>
+<span id="cb59-5"><a href="#cb59-5" aria-hidden="true" tabindex="-1"></a><span class="cf">else</span>:</span>
+<span id="cb59-6"><a href="#cb59-6" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(<span class="st">"Distributed result not found. Run run_pycogaps_distributed.py from Terminal first."</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Distributed result not found. Run run_pycogaps_distributed.py from Terminal first.</code></pre>
+</div>
+</div>
+<hr>
+</section>
+<section id="final-answers-summary" class="level1" data-number="18">
+<h1 data-number="18"><span class="header-section-number">18</span> Final answers (summary)</h1>
+<ul>
+<li><strong>Q1:</strong> Identify the pattern most correlated with stimulation; validate using top genes (expected ISG enrichment).</li>
+<li><strong>Q2:</strong> Identity patterns localize by cell type; the IFN response pattern shows condition association across cell types.</li>
+<li><strong>Q3:</strong> Compare IFN pattern activity by immune cell type (and split by condition) to quantify heterogeneity.</li>
+</ul>
+<hr>
+</section>
+<section id="references" class="level1" data-number="19">
+<h1 data-number="19"><span class="header-section-number">19</span> References</h1>
+<ul>
+<li>Kang, H. M., Subramaniam, M., Targ, S., Nguyen, M., Maliskova, L., McCarthy, E., … Ye, C. J. (2018). Multiplexed droplet single-cell RNA-sequencing using natural genetic variation. <em>Nature Biotechnology</em>, 36(1), 89–94. https://doi.org/10.1038/nbt.4042</li>
+<li>Kotliar, D., Veres, A., Nagy, M. A., Tabrizi, S., Hodis, E., Melton, D. A., &amp; Sabeti, P. C. (2019). Identifying gene expression programs of cell-type identity and cellular activity with single-cell RNA-Seq. <em>eLife</em>, 8, e43803. https://doi.org/10.7554/eLife.43803</li>
+<li>Stein-O’Brien, G. L., Clark, B. S., Sherman, T., Zibetti, C., Hu, Q., Sealfon, R., … Fertig, E. J. (2019). Decomposing cell identity for transfer learning across cellular measurements, platforms, tissues, and species. <em>Cell Systems</em>, 8(5), 395–411.e8. https://doi.org/10.1016/j.cels.2019.04.004</li>
+<li>Fertig, E. J., Ding, J., Favorov, A. V., Parmigiani, G., &amp; Ochs, M. F. (2010). CoGAPS: An R/C++ package to identify patterns and biological process activity in transcriptomic data. <em>Bioinformatics</em>, 26(21), 2792–2793. https://doi.org/10.1093/bioinformatics/btq503</li>
+</ul>
+<!-- -->
+
+</section>
+
+</main>
+<!-- /main column -->
+<script id="quarto-html-after-body" type="application/javascript">
+window.document.addEventListener("DOMContentLoaded", function (event) {
+  const toggleBodyColorMode = (bsSheetEl) => {
+    const mode = bsSheetEl.getAttribute("data-mode");
+    const bodyEl = window.document.querySelector("body");
+    if (mode === "dark") {
+      bodyEl.classList.add("quarto-dark");
+      bodyEl.classList.remove("quarto-light");
+    } else {
+      bodyEl.classList.add("quarto-light");
+      bodyEl.classList.remove("quarto-dark");
+    }
+  }
+  const toggleBodyColorPrimary = () => {
+    const bsSheetEl = window.document.querySelector("link#quarto-bootstrap");
+    if (bsSheetEl) {
+      toggleBodyColorMode(bsSheetEl);
+    }
+  }
+  toggleBodyColorPrimary();  
+  const icon = "";
+  const anchorJS = new window.AnchorJS();
+  anchorJS.options = {
+    placement: 'right',
+    icon: icon
+  };
+  anchorJS.add('.anchored');
+  const isCodeAnnotation = (el) => {
+    for (const clz of el.classList) {
+      if (clz.startsWith('code-annotation-')) {                     
+        return true;
+      }
+    }
+    return false;
+  }
+  const onCopySuccess = function(e) {
+    // button target
+    const button = e.trigger;
+    // don't keep focus
+    button.blur();
+    // flash "checked"
+    button.classList.add('code-copy-button-checked');
+    var currentTitle = button.getAttribute("title");
+    button.setAttribute("title", "Copied!");
+    let tooltip;
+    if (window.bootstrap) {
+      button.setAttribute("data-bs-toggle", "tooltip");
+      button.setAttribute("data-bs-placement", "left");
+      button.setAttribute("data-bs-title", "Copied!");
+      tooltip = new bootstrap.Tooltip(button, 
+        { trigger: "manual", 
+          customClass: "code-copy-button-tooltip",
+          offset: [0, -8]});
+      tooltip.show();    
+    }
+    setTimeout(function() {
+      if (tooltip) {
+        tooltip.hide();
+        button.removeAttribute("data-bs-title");
+        button.removeAttribute("data-bs-toggle");
+        button.removeAttribute("data-bs-placement");
+      }
+      button.setAttribute("title", currentTitle);
+      button.classList.remove('code-copy-button-checked');
+    }, 1000);
+    // clear code selection
+    e.clearSelection();
+  }
+  const getTextToCopy = function(trigger) {
+      const codeEl = trigger.previousElementSibling.cloneNode(true);
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+  }
+  const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+    text: getTextToCopy
+  });
+  clipboard.on('success', onCopySuccess);
+  if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+    // For code content inside modals, clipBoardJS needs to be initialized with a container option
+    // TODO: Check when it could be a function (https://github.com/zenorocha/clipboard.js/issues/860)
+    const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+      text: getTextToCopy,
+      container: window.document.getElementById('quarto-embedded-source-code-modal')
+    });
+    clipboardModal.on('success', onCopySuccess);
+  }
+  const viewSource = window.document.getElementById('quarto-view-source') ||
+                     window.document.getElementById('quarto-code-tools-source');
+  if (viewSource) {
+    const sourceUrl = viewSource.getAttribute("data-quarto-source-url");
+    viewSource.addEventListener("click", function(e) {
+      if (sourceUrl) {
+        // rstudio viewer pane
+        if (/\bcapabilities=\b/.test(window.location)) {
+          window.open(sourceUrl);
+        } else {
+          window.location.href = sourceUrl;
+        }
+      } else {
+        const modal = new bootstrap.Modal(document.getElementById('quarto-embedded-source-code-modal'));
+        modal.show();
+      }
+      return false;
+    });
+  }
+  function toggleCodeHandler(show) {
+    return function(e) {
+      const detailsSrc = window.document.querySelectorAll(".cell > details > .sourceCode");
+      for (let i=0; i<detailsSrc.length; i++) {
+        const details = detailsSrc[i].parentElement;
+        if (show) {
+          details.open = true;
+        } else {
+          details.removeAttribute("open");
+        }
+      }
+      const cellCodeDivs = window.document.querySelectorAll(".cell > .sourceCode");
+      const fromCls = show ? "hidden" : "unhidden";
+      const toCls = show ? "unhidden" : "hidden";
+      for (let i=0; i<cellCodeDivs.length; i++) {
+        const codeDiv = cellCodeDivs[i];
+        if (codeDiv.classList.contains(fromCls)) {
+          codeDiv.classList.remove(fromCls);
+          codeDiv.classList.add(toCls);
+        } 
+      }
+      return false;
+    }
+  }
+  const hideAllCode = window.document.getElementById("quarto-hide-all-code");
+  if (hideAllCode) {
+    hideAllCode.addEventListener("click", toggleCodeHandler(false));
+  }
+  const showAllCode = window.document.getElementById("quarto-show-all-code");
+  if (showAllCode) {
+    showAllCode.addEventListener("click", toggleCodeHandler(true));
+  }
+    var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+    var mailtoRegex = new RegExp(/^mailto:/);
+      var filterRegex = new RegExp('/' + window.location.host + '/');
+    var isInternal = (href) => {
+        return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+    }
+    // Inspect non-navigation links and adorn them if external
+ 	var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+    for (var i=0; i<links.length; i++) {
+      const link = links[i];
+      if (!isInternal(link.href)) {
+        // undo the damage that might have been done by quarto-nav.js in the case of
+        // links that we want to consider external
+        if (link.dataset.originalHref !== undefined) {
+          link.href = link.dataset.originalHref;
+        }
+      }
+    }
+  function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+    const config = {
+      allowHTML: true,
+      maxWidth: 500,
+      delay: 100,
+      arrow: false,
+      appendTo: function(el) {
+          return el.parentElement;
+      },
+      interactive: true,
+      interactiveBorder: 10,
+      theme: 'quarto',
+      placement: 'bottom-start',
+    };
+    if (contentFn) {
+      config.content = contentFn;
+    }
+    if (onTriggerFn) {
+      config.onTrigger = onTriggerFn;
+    }
+    if (onUntriggerFn) {
+      config.onUntrigger = onUntriggerFn;
+    }
+    window.tippy(el, config); 
+  }
+  const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+  for (var i=0; i<noterefs.length; i++) {
+    const ref = noterefs[i];
+    tippyHover(ref, function() {
+      // use id or data attribute instead here
+      let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+      try { href = new URL(href).hash; } catch {}
+      const id = href.replace(/^#\/?/, "");
+      const note = window.document.getElementById(id);
+      if (note) {
+        return note.innerHTML;
+      } else {
+        return "";
+      }
+    });
+  }
+  const xrefs = window.document.querySelectorAll('a.quarto-xref');
+  const processXRef = (id, note) => {
+    // Strip column container classes
+    const stripColumnClz = (el) => {
+      el.classList.remove("page-full", "page-columns");
+      if (el.children) {
+        for (const child of el.children) {
+          stripColumnClz(child);
+        }
+      }
+    }
+    stripColumnClz(note)
+    if (id === null || id.startsWith('sec-')) {
+      // Special case sections, only their first couple elements
+      const container = document.createElement("div");
+      if (note.children && note.children.length > 2) {
+        container.appendChild(note.children[0].cloneNode(true));
+        for (let i = 1; i < note.children.length; i++) {
+          const child = note.children[i];
+          if (child.tagName === "P" && child.innerText === "") {
+            continue;
+          } else {
+            container.appendChild(child.cloneNode(true));
+            break;
+          }
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(container);
+        }
+        return container.innerHTML
+      } else {
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        return note.innerHTML;
+      }
+    } else {
+      // Remove any anchor links if they are present
+      const anchorLink = note.querySelector('a.anchorjs-link');
+      if (anchorLink) {
+        anchorLink.remove();
+      }
+      if (window.Quarto?.typesetMath) {
+        window.Quarto.typesetMath(note);
+      }
+      // TODO in 1.5, we should make sure this works without a callout special case
+      if (note.classList.contains("callout")) {
+        return note.outerHTML;
+      } else {
+        return note.innerHTML;
+      }
+    }
+  }
+  for (var i=0; i<xrefs.length; i++) {
+    const xref = xrefs[i];
+    tippyHover(xref, undefined, function(instance) {
+      instance.disable();
+      let url = xref.getAttribute('href');
+      let hash = undefined; 
+      if (url.startsWith('#')) {
+        hash = url;
+      } else {
+        try { hash = new URL(url).hash; } catch {}
+      }
+      if (hash) {
+        const id = hash.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note !== null) {
+          try {
+            const html = processXRef(id, note.cloneNode(true));
+            instance.setContent(html);
+          } finally {
+            instance.enable();
+            instance.show();
+          }
+        } else {
+          // See if we can fetch this
+          fetch(url.split('#')[0])
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.getElementById(id);
+            if (note !== null) {
+              const html = processXRef(id, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      } else {
+        // See if we can fetch a full url (with no hash to target)
+        // This is a special case and we should probably do some content thinning / targeting
+        fetch(url)
+        .then(res => res.text())
+        .then(html => {
+          const parser = new DOMParser();
+          const htmlDoc = parser.parseFromString(html, "text/html");
+          const note = htmlDoc.querySelector('main.content');
+          if (note !== null) {
+            // This should only happen for chapter cross references
+            // (since there is no id in the URL)
+            // remove the first header
+            if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+              note.children[0].remove();
+            }
+            const html = processXRef(null, note);
+            instance.setContent(html);
+          } 
+        }).finally(() => {
+          instance.enable();
+          instance.show();
+        });
+      }
+    }, function(instance) {
+    });
+  }
+      let selectedAnnoteEl;
+      const selectorForAnnotation = ( cell, annotation) => {
+        let cellAttr = 'data-code-cell="' + cell + '"';
+        let lineAttr = 'data-code-annotation="' +  annotation + '"';
+        const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+        return selector;
+      }
+      const selectCodeLines = (annoteEl) => {
+        const doc = window.document;
+        const targetCell = annoteEl.getAttribute("data-target-cell");
+        const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+        const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+        const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+        const lineIds = lines.map((line) => {
+          return targetCell + "-" + line;
+        })
+        let top = null;
+        let height = null;
+        let parent = null;
+        if (lineIds.length > 0) {
+            //compute the position of the single el (top and bottom and make a div)
+            const el = window.document.getElementById(lineIds[0]);
+            top = el.offsetTop;
+            height = el.offsetHeight;
+            parent = el.parentElement.parentElement;
+          if (lineIds.length > 1) {
+            const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+            const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+            height = bottom - top;
+          }
+          if (top !== null && height !== null && parent !== null) {
+            // cook up a div (if necessary) and position it 
+            let div = window.document.getElementById("code-annotation-line-highlight");
+            if (div === null) {
+              div = window.document.createElement("div");
+              div.setAttribute("id", "code-annotation-line-highlight");
+              div.style.position = 'absolute';
+              parent.appendChild(div);
+            }
+            div.style.top = top - 2 + "px";
+            div.style.height = height + 4 + "px";
+            div.style.left = 0;
+            let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+            if (gutterDiv === null) {
+              gutterDiv = window.document.createElement("div");
+              gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+              gutterDiv.style.position = 'absolute';
+              const codeCell = window.document.getElementById(targetCell);
+              const gutter = codeCell.querySelector('.code-annotation-gutter');
+              gutter.appendChild(gutterDiv);
+            }
+            gutterDiv.style.top = top - 2 + "px";
+            gutterDiv.style.height = height + 4 + "px";
+          }
+          selectedAnnoteEl = annoteEl;
+        }
+      };
+      const unselectCodeLines = () => {
+        const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+        elementsIds.forEach((elId) => {
+          const div = window.document.getElementById(elId);
+          if (div) {
+            div.remove();
+          }
+        });
+        selectedAnnoteEl = undefined;
+      };
+        // Handle positioning of the toggle
+    window.addEventListener(
+      "resize",
+      throttle(() => {
+        elRect = undefined;
+        if (selectedAnnoteEl) {
+          selectCodeLines(selectedAnnoteEl);
+        }
+      }, 10)
+    );
+    function throttle(fn, ms) {
+    let throttle = false;
+    let timer;
+      return (...args) => {
+        if(!throttle) { // first call gets through
+            fn.apply(this, args);
+            throttle = true;
+        } else { // all the others get throttled
+            if(timer) clearTimeout(timer); // cancel #2
+            timer = setTimeout(() => {
+              fn.apply(this, args);
+              timer = throttle = false;
+            }, ms);
+        }
+      };
+    }
+      // Attach click handler to the DT
+      const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+      for (const annoteDlNode of annoteDls) {
+        annoteDlNode.addEventListener('click', (event) => {
+          const clickedEl = event.target;
+          if (clickedEl !== selectedAnnoteEl) {
+            unselectCodeLines();
+            const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+            if (activeEl) {
+              activeEl.classList.remove('code-annotation-active');
+            }
+            selectCodeLines(clickedEl);
+            clickedEl.classList.add('code-annotation-active');
+          } else {
+            // Unselect the line
+            unselectCodeLines();
+            clickedEl.classList.remove('code-annotation-active');
+          }
+        });
+      }
+  const findCites = (el) => {
+    const parentEl = el.parentElement;
+    if (parentEl) {
+      const cites = parentEl.dataset.cites;
+      if (cites) {
+        return {
+          el,
+          cites: cites.split(' ')
+        };
+      } else {
+        return findCites(el.parentElement)
+      }
+    } else {
+      return undefined;
+    }
+  };
+  var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+  for (var i=0; i<bibliorefs.length; i++) {
+    const ref = bibliorefs[i];
+    const citeInfo = findCites(ref);
+    if (citeInfo) {
+      tippyHover(citeInfo.el, function() {
+        var popup = window.document.createElement('div');
+        citeInfo.cites.forEach(function(cite) {
+          var citeDiv = window.document.createElement('div');
+          citeDiv.classList.add('hanging-indent');
+          citeDiv.classList.add('csl-entry');
+          var biblioDiv = window.document.getElementById('ref-' + cite);
+          if (biblioDiv) {
+            citeDiv.innerHTML = biblioDiv.innerHTML;
+          }
+          popup.appendChild(citeDiv);
+        });
+        return popup.innerHTML;
+      });
+    }
+  }
+});
+</script><div class="modal fade" id="quarto-embedded-source-code-modal" tabindex="-1" aria-labelledby="quarto-embedded-source-code-modal-label" aria-hidden="true"><div class="modal-dialog modal-dialog-scrollable"><div class="modal-content"><div class="modal-header"><h5 class="modal-title" id="quarto-embedded-source-code-modal-label">Source Code</h5><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="">
+<div class="sourceCode" id="cb61" data-shortcodes="false"><pre class="sourceCode markdown code-with-copy"><code class="sourceCode markdown"><span id="cb61-1"><a href="#cb61-1" aria-hidden="true" tabindex="-1"></a><span class="co">---</span></span>
+<span id="cb61-2"><a href="#cb61-2" aria-hidden="true" tabindex="-1"></a><span class="an">title:</span><span class="co"> "Case Study 4 (Student Version): CoGAPS Bayesian NMF for IFN-β Responses in PBMC scRNA-seq"</span></span>
+<span id="cb61-3"><a href="#cb61-3" aria-hidden="true" tabindex="-1"></a><span class="an">author:</span><span class="co"> "Oshane Thomas"</span></span>
+<span id="cb61-4"><a href="#cb61-4" aria-hidden="true" tabindex="-1"></a><span class="an">format:</span></span>
+<span id="cb61-5"><a href="#cb61-5" aria-hidden="true" tabindex="-1"></a><span class="co">  html:</span></span>
+<span id="cb61-6"><a href="#cb61-6" aria-hidden="true" tabindex="-1"></a><span class="co">    toc: true</span></span>
+<span id="cb61-7"><a href="#cb61-7" aria-hidden="true" tabindex="-1"></a><span class="co">    toc-depth: 3</span></span>
+<span id="cb61-8"><a href="#cb61-8" aria-hidden="true" tabindex="-1"></a><span class="co">    number-sections: true</span></span>
+<span id="cb61-9"><a href="#cb61-9" aria-hidden="true" tabindex="-1"></a><span class="co">    code-fold: false</span></span>
+<span id="cb61-10"><a href="#cb61-10" aria-hidden="true" tabindex="-1"></a><span class="co">    code-tools: true</span></span>
+<span id="cb61-11"><a href="#cb61-11" aria-hidden="true" tabindex="-1"></a><span class="an">execute:</span></span>
+<span id="cb61-12"><a href="#cb61-12" aria-hidden="true" tabindex="-1"></a><span class="co">  echo: true</span></span>
+<span id="cb61-13"><a href="#cb61-13" aria-hidden="true" tabindex="-1"></a><span class="co">  warning: false</span></span>
+<span id="cb61-14"><a href="#cb61-14" aria-hidden="true" tabindex="-1"></a><span class="co">  message: false</span></span>
+<span id="cb61-15"><a href="#cb61-15" aria-hidden="true" tabindex="-1"></a><span class="co">  cache: true</span></span>
+<span id="cb61-16"><a href="#cb61-16" aria-hidden="true" tabindex="-1"></a><span class="co">  freeze: auto</span></span>
+<span id="cb61-17"><a href="#cb61-17" aria-hidden="true" tabindex="-1"></a><span class="an">jupyter:</span><span class="co"> cogaps_sc</span></span>
+<span id="cb61-18"><a href="#cb61-18" aria-hidden="true" tabindex="-1"></a><span class="co">---</span></span>
+<span id="cb61-19"><a href="#cb61-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-20"><a href="#cb61-20" aria-hidden="true" tabindex="-1"></a><span class="fu"># How to use this notebook</span></span>
+<span id="cb61-21"><a href="#cb61-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-22"><a href="#cb61-22" aria-hidden="true" tabindex="-1"></a>This notebook is designed to be used **inside the provided Docker image** (RStudio Server + Quarto).</span>
+<span id="cb61-23"><a href="#cb61-23" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-24"><a href="#cb61-24" aria-hidden="true" tabindex="-1"></a>You can work in either mode:</span>
+<span id="cb61-25"><a href="#cb61-25" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-26"><a href="#cb61-26" aria-hidden="true" tabindex="-1"></a><span class="ss">-   </span>**Interactive mode (recommended for learning):** run code chunks one-by-one while you read the narrative.</span>
+<span id="cb61-27"><a href="#cb61-27" aria-hidden="true" tabindex="-1"></a><span class="ss">-   </span>**Render mode (recommended for a complete report):** render the full notebook to HTML.</span>
+<span id="cb61-28"><a href="#cb61-28" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-29"><a href="#cb61-29" aria-hidden="true" tabindex="-1"></a><span class="fu">## Step 0 — Launch the container</span></span>
+<span id="cb61-30"><a href="#cb61-30" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-31"><a href="#cb61-31" aria-hidden="true" tabindex="-1"></a><span class="in">``` bash</span></span>
+<span id="cb61-32"><a href="#cb61-32" aria-hidden="true" tabindex="-1"></a><span class="ex">docker</span> pull <span class="at">--platform</span> linux/amd64 othomas2/ottr-ocs-pycogaps:latest</span>
+<span id="cb61-33"><a href="#cb61-33" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-34"><a href="#cb61-34" aria-hidden="true" tabindex="-1"></a><span class="ex">docker</span> run <span class="at">--platform</span> linux/amd64 <span class="at">-it</span> <span class="at">--rm</span> <span class="dt">\</span></span>
+<span id="cb61-35"><a href="#cb61-35" aria-hidden="true" tabindex="-1"></a>  <span class="at">-p</span> 8787:8787 <span class="dt">\</span></span>
+<span id="cb61-36"><a href="#cb61-36" aria-hidden="true" tabindex="-1"></a>  <span class="at">-e</span> PASSWORD=<span class="st">"Password12"</span> <span class="dt">\</span></span>
+<span id="cb61-37"><a href="#cb61-37" aria-hidden="true" tabindex="-1"></a>  othomas2/ottr-ocs-pycogaps:latest</span>
+<span id="cb61-38"><a href="#cb61-38" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb61-39"><a href="#cb61-39" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-40"><a href="#cb61-40" aria-hidden="true" tabindex="-1"></a>Open:</span>
+<span id="cb61-41"><a href="#cb61-41" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-42"><a href="#cb61-42" aria-hidden="true" tabindex="-1"></a><span class="ss">-   </span>**URL:** http://localhost:8787</span>
+<span id="cb61-43"><a href="#cb61-43" aria-hidden="true" tabindex="-1"></a><span class="ss">-   </span>**User:** <span class="in">`rstudio`</span></span>
+<span id="cb61-44"><a href="#cb61-44" aria-hidden="true" tabindex="-1"></a><span class="ss">-   </span>**Password:** whatever you set in <span class="in">`PASSWORD=...`</span></span>
+<span id="cb61-45"><a href="#cb61-45" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-46"><a href="#cb61-46" aria-hidden="true" tabindex="-1"></a><span class="at">&gt; If you’re on an Apple Silicon Mac, the </span><span class="in">`--platform linux/amd64`</span><span class="at"> flag is required.</span></span>
+<span id="cb61-47"><a href="#cb61-47" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-48"><a href="#cb61-48" aria-hidden="true" tabindex="-1"></a><span class="fu">## Step 1 — One-time setup inside the container</span></span>
+<span id="cb61-49"><a href="#cb61-49" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-50"><a href="#cb61-50" aria-hidden="true" tabindex="-1"></a>In **RStudio → Terminal**:</span>
+<span id="cb61-51"><a href="#cb61-51" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-52"><a href="#cb61-52" aria-hidden="true" tabindex="-1"></a><span class="in">``` bash</span></span>
+<span id="cb61-53"><a href="#cb61-53" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> /home/rstudio/project</span>
+<span id="cb61-54"><a href="#cb61-54" aria-hidden="true" tabindex="-1"></a><span class="fu">bash</span> setup_venv.sh</span>
+<span id="cb61-55"><a href="#cb61-55" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb61-56"><a href="#cb61-56" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-57"><a href="#cb61-57" aria-hidden="true" tabindex="-1"></a>(Optional sanity check)</span>
+<span id="cb61-58"><a href="#cb61-58" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-59"><a href="#cb61-59" aria-hidden="true" tabindex="-1"></a><span class="in">``` bash</span></span>
+<span id="cb61-60"><a href="#cb61-60" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> /home/rstudio/project</span>
+<span id="cb61-61"><a href="#cb61-61" aria-hidden="true" tabindex="-1"></a><span class="bu">source</span> _environment</span>
+<span id="cb61-62"><a href="#cb61-62" aria-hidden="true" tabindex="-1"></a><span class="ex">quarto</span> check jupyter</span>
+<span id="cb61-63"><a href="#cb61-63" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb61-64"><a href="#cb61-64" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-65"><a href="#cb61-65" aria-hidden="true" tabindex="-1"></a><span class="fu">## Step 2 — Render (optional)</span></span>
+<span id="cb61-66"><a href="#cb61-66" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-67"><a href="#cb61-67" aria-hidden="true" tabindex="-1"></a><span class="in">``` bash</span></span>
+<span id="cb61-68"><a href="#cb61-68" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> /home/rstudio/project</span>
+<span id="cb61-69"><a href="#cb61-69" aria-hidden="true" tabindex="-1"></a><span class="bu">source</span> _environment</span>
+<span id="cb61-70"><a href="#cb61-70" aria-hidden="true" tabindex="-1"></a><span class="ex">quarto</span> render cogaps_case_study4_student.qmd</span>
+<span id="cb61-71"><a href="#cb61-71" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb61-72"><a href="#cb61-72" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-73"><a href="#cb61-73" aria-hidden="true" tabindex="-1"></a>------------------------------------------------------------------------</span>
+<span id="cb61-74"><a href="#cb61-74" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-75"><a href="#cb61-75" aria-hidden="true" tabindex="-1"></a><span class="fu">## Important note about distributed / multiprocessing</span></span>
+<span id="cb61-76"><a href="#cb61-76" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-77"><a href="#cb61-77" aria-hidden="true" tabindex="-1"></a>**Do not run distributed CoGAPS during Quarto render.**\</span>
+<span id="cb61-78"><a href="#cb61-78" aria-hidden="true" tabindex="-1"></a>Quarto executes every code chunk when rendering, and long-running / multi-process steps can fail or make renders painfully slow.</span>
+<span id="cb61-79"><a href="#cb61-79" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-80"><a href="#cb61-80" aria-hidden="true" tabindex="-1"></a>If you want distributed CoGAPS, run it **from Terminal** using the provided script (see the optional section near the end), then come back and load the result in this notebook.</span>
+<span id="cb61-81"><a href="#cb61-81" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-82"><a href="#cb61-82" aria-hidden="true" tabindex="-1"></a>------------------------------------------------------------------------</span>
+<span id="cb61-83"><a href="#cb61-83" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-84"><a href="#cb61-84" aria-hidden="true" tabindex="-1"></a><span class="fu"># Overview</span></span>
+<span id="cb61-85"><a href="#cb61-85" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-86"><a href="#cb61-86" aria-hidden="true" tabindex="-1"></a>This case study applies **CoGAPS (Bayesian NMF)** to single-cell RNA-seq PBMCs under **control vs IFN-β stimulation** (Kang et al., 2018; GEO: GSE96583).</span>
+<span id="cb61-87"><a href="#cb61-87" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-88"><a href="#cb61-88" aria-hidden="true" tabindex="-1"></a>Learning goal: use a latent factor model to separate:</span>
+<span id="cb61-89"><a href="#cb61-89" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-90"><a href="#cb61-90" aria-hidden="true" tabindex="-1"></a><span class="ss">-   </span>**Cell identity programs** (stable lineage modules; “what a cell is”)</span>
+<span id="cb61-91"><a href="#cb61-91" aria-hidden="true" tabindex="-1"></a><span class="ss">-   </span>**Cellular activity programs** (stimulus-induced modules; “what a cell is doing”)</span>
+<span id="cb61-92"><a href="#cb61-92" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-93"><a href="#cb61-93" aria-hidden="true" tabindex="-1"></a><span class="fu">## Research questions</span></span>
+<span id="cb61-94"><a href="#cb61-94" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-95"><a href="#cb61-95" aria-hidden="true" tabindex="-1"></a>**Q1:** What transcriptional programs respond to IFN-β stimulation across PBMCs?\</span>
+<span id="cb61-96"><a href="#cb61-96" aria-hidden="true" tabindex="-1"></a>**Q2:** Can we separate “cell type identity programs” from the “interferon response program”?\</span>
+<span id="cb61-97"><a href="#cb61-97" aria-hidden="true" tabindex="-1"></a>**Q3:** How does interferon-response pattern strength vary across immune cell types?</span>
+<span id="cb61-98"><a href="#cb61-98" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-99"><a href="#cb61-99" aria-hidden="true" tabindex="-1"></a>------------------------------------------------------------------------</span>
+<span id="cb61-100"><a href="#cb61-100" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-101"><a href="#cb61-101" aria-hidden="true" tabindex="-1"></a><span class="fu"># 1. Environment check (run this first)</span></span>
+<span id="cb61-102"><a href="#cb61-102" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-105"><a href="#cb61-105" aria-hidden="true" tabindex="-1"></a><span class="in">```{python}</span></span>
+<span id="cb61-106"><a href="#cb61-106" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> os</span>
+<span id="cb61-107"><a href="#cb61-107" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> sys</span>
+<span id="cb61-108"><a href="#cb61-108" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> platform</span>
+<span id="cb61-109"><a href="#cb61-109" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-110"><a href="#cb61-110" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"Python:"</span>, sys.version)</span>
+<span id="cb61-111"><a href="#cb61-111" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"Executable:"</span>, sys.executable)</span>
+<span id="cb61-112"><a href="#cb61-112" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"Platform:"</span>, platform.platform())</span>
+<span id="cb61-113"><a href="#cb61-113" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-114"><a href="#cb61-114" aria-hidden="true" tabindex="-1"></a><span class="co"># Verify PyCoGAPS is importable (this confirms setup worked)</span></span>
+<span id="cb61-115"><a href="#cb61-115" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> pycogaps</span>
+<span id="cb61-116"><a href="#cb61-116" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> PyCoGAPS.parameters <span class="im">import</span> CoParams, setParams</span>
+<span id="cb61-117"><a href="#cb61-117" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> PyCoGAPS.pycogaps_main <span class="im">import</span> CoGAPS</span>
+<span id="cb61-118"><a href="#cb61-118" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-119"><a href="#cb61-119" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"✅ pycogaps + PyCoGAPS imports OK"</span>)</span>
+<span id="cb61-120"><a href="#cb61-120" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb61-121"><a href="#cb61-121" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-122"><a href="#cb61-122" aria-hidden="true" tabindex="-1"></a>------------------------------------------------------------------------</span>
+<span id="cb61-123"><a href="#cb61-123" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-124"><a href="#cb61-124" aria-hidden="true" tabindex="-1"></a><span class="fu"># 2. Imports and global settings</span></span>
+<span id="cb61-125"><a href="#cb61-125" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-128"><a href="#cb61-128" aria-hidden="true" tabindex="-1"></a><span class="in">```{python}</span></span>
+<span id="cb61-129"><a href="#cb61-129" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> time</span>
+<span id="cb61-130"><a href="#cb61-130" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> numpy <span class="im">as</span> np</span>
+<span id="cb61-131"><a href="#cb61-131" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> pandas <span class="im">as</span> pd</span>
+<span id="cb61-132"><a href="#cb61-132" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> scanpy <span class="im">as</span> sc</span>
+<span id="cb61-133"><a href="#cb61-133" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-134"><a href="#cb61-134" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> matplotlib.pyplot <span class="im">as</span> plt</span>
+<span id="cb61-135"><a href="#cb61-135" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> seaborn <span class="im">as</span> sns</span>
+<span id="cb61-136"><a href="#cb61-136" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-137"><a href="#cb61-137" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> IPython.display <span class="im">import</span> display</span>
+<span id="cb61-138"><a href="#cb61-138" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-139"><a href="#cb61-139" aria-hidden="true" tabindex="-1"></a>np.random.seed(<span class="dv">42</span>)</span>
+<span id="cb61-140"><a href="#cb61-140" aria-hidden="true" tabindex="-1"></a>plt.rcParams[<span class="st">"figure.dpi"</span>] <span class="op">=</span> <span class="dv">110</span></span>
+<span id="cb61-141"><a href="#cb61-141" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb61-142"><a href="#cb61-142" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-143"><a href="#cb61-143" aria-hidden="true" tabindex="-1"></a>------------------------------------------------------------------------</span>
+<span id="cb61-144"><a href="#cb61-144" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-145"><a href="#cb61-145" aria-hidden="true" tabindex="-1"></a><span class="fu"># 3. Load data</span></span>
+<span id="cb61-146"><a href="#cb61-146" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-147"><a href="#cb61-147" aria-hidden="true" tabindex="-1"></a>The dataset is baked into the Docker image at:</span>
+<span id="cb61-148"><a href="#cb61-148" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-149"><a href="#cb61-149" aria-hidden="true" tabindex="-1"></a><span class="ss">-   </span><span class="in">`/opt/data/kang_counts_25k.h5ad`</span></span>
+<span id="cb61-150"><a href="#cb61-150" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-151"><a href="#cb61-151" aria-hidden="true" tabindex="-1"></a>If it is not found, we fall back to downloading via Figshare.</span>
+<span id="cb61-152"><a href="#cb61-152" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-155"><a href="#cb61-155" aria-hidden="true" tabindex="-1"></a><span class="in">```{python}</span></span>
+<span id="cb61-156"><a href="#cb61-156" aria-hidden="true" tabindex="-1"></a>path_img <span class="op">=</span> <span class="st">"/opt/data/kang_counts_25k.h5ad"</span></span>
+<span id="cb61-157"><a href="#cb61-157" aria-hidden="true" tabindex="-1"></a>path_local <span class="op">=</span> <span class="st">"kang_counts_25k.h5ad"</span></span>
+<span id="cb61-158"><a href="#cb61-158" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-159"><a href="#cb61-159" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> os.path.exists(path_img):</span>
+<span id="cb61-160"><a href="#cb61-160" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(<span class="ss">f"Loading dataset from image: </span><span class="sc">{</span>path_img<span class="sc">}</span><span class="ss">"</span>)</span>
+<span id="cb61-161"><a href="#cb61-161" aria-hidden="true" tabindex="-1"></a>    adata <span class="op">=</span> sc.read(path_img)</span>
+<span id="cb61-162"><a href="#cb61-162" aria-hidden="true" tabindex="-1"></a><span class="cf">else</span>:</span>
+<span id="cb61-163"><a href="#cb61-163" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(<span class="st">"Image dataset not found; using local path or downloading via backup_url."</span>)</span>
+<span id="cb61-164"><a href="#cb61-164" aria-hidden="true" tabindex="-1"></a>    adata <span class="op">=</span> sc.read(</span>
+<span id="cb61-165"><a href="#cb61-165" aria-hidden="true" tabindex="-1"></a>        path_local,</span>
+<span id="cb61-166"><a href="#cb61-166" aria-hidden="true" tabindex="-1"></a>        backup_url<span class="op">=</span><span class="st">"https://figshare.com/ndownloader/files/34464122"</span>,</span>
+<span id="cb61-167"><a href="#cb61-167" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb61-168"><a href="#cb61-168" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-169"><a href="#cb61-169" aria-hidden="true" tabindex="-1"></a>adata</span>
+<span id="cb61-170"><a href="#cb61-170" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb61-171"><a href="#cb61-171" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-172"><a href="#cb61-172" aria-hidden="true" tabindex="-1"></a><span class="fu">## Confirm required metadata</span></span>
+<span id="cb61-173"><a href="#cb61-173" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-176"><a href="#cb61-176" aria-hidden="true" tabindex="-1"></a><span class="in">```{python}</span></span>
+<span id="cb61-177"><a href="#cb61-177" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> <span class="st">"condition"</span> <span class="kw">not</span> <span class="kw">in</span> adata.obs <span class="kw">and</span> <span class="st">"label"</span> <span class="kw">in</span> adata.obs:</span>
+<span id="cb61-178"><a href="#cb61-178" aria-hidden="true" tabindex="-1"></a>    adata.obs[<span class="st">"condition"</span>] <span class="op">=</span> adata.obs[<span class="st">"label"</span>]</span>
+<span id="cb61-179"><a href="#cb61-179" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-180"><a href="#cb61-180" aria-hidden="true" tabindex="-1"></a>required <span class="op">=</span> [<span class="st">"condition"</span>, <span class="st">"cell_type"</span>]</span>
+<span id="cb61-181"><a href="#cb61-181" aria-hidden="true" tabindex="-1"></a>missing <span class="op">=</span> [c <span class="cf">for</span> c <span class="kw">in</span> required <span class="cf">if</span> c <span class="kw">not</span> <span class="kw">in</span> adata.obs.columns]</span>
+<span id="cb61-182"><a href="#cb61-182" aria-hidden="true" tabindex="-1"></a><span class="cf">assert</span> <span class="kw">not</span> missing, <span class="ss">f"Missing required columns in adata.obs: </span><span class="sc">{</span>missing<span class="sc">}</span><span class="ss">"</span></span>
+<span id="cb61-183"><a href="#cb61-183" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-184"><a href="#cb61-184" aria-hidden="true" tabindex="-1"></a>adata.obs[[<span class="st">"condition"</span>, <span class="st">"cell_type"</span>]].head()</span>
+<span id="cb61-185"><a href="#cb61-185" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb61-186"><a href="#cb61-186" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-187"><a href="#cb61-187" aria-hidden="true" tabindex="-1"></a>------------------------------------------------------------------------</span>
+<span id="cb61-188"><a href="#cb61-188" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-189"><a href="#cb61-189" aria-hidden="true" tabindex="-1"></a><span class="fu"># 4. Dataset overview</span></span>
+<span id="cb61-190"><a href="#cb61-190" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-193"><a href="#cb61-193" aria-hidden="true" tabindex="-1"></a><span class="in">```{python}</span></span>
+<span id="cb61-194"><a href="#cb61-194" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> textwrap <span class="im">import</span> fill</span>
+<span id="cb61-195"><a href="#cb61-195" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-196"><a href="#cb61-196" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> wrap(text, width<span class="op">=</span><span class="dv">90</span>):</span>
+<span id="cb61-197"><a href="#cb61-197" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> fill(text, width<span class="op">=</span>width)</span>
+<span id="cb61-198"><a href="#cb61-198" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-199"><a href="#cb61-199" aria-hidden="true" tabindex="-1"></a>overview <span class="op">=</span> pd.DataFrame({</span>
+<span id="cb61-200"><a href="#cb61-200" aria-hidden="true" tabindex="-1"></a>    <span class="st">"Item"</span>: [</span>
+<span id="cb61-201"><a href="#cb61-201" aria-hidden="true" tabindex="-1"></a>        <span class="st">"Number of cells"</span>,</span>
+<span id="cb61-202"><a href="#cb61-202" aria-hidden="true" tabindex="-1"></a>        <span class="st">"Number of genes"</span>,</span>
+<span id="cb61-203"><a href="#cb61-203" aria-hidden="true" tabindex="-1"></a>        <span class="st">"Cell-level metadata (obs)"</span>,</span>
+<span id="cb61-204"><a href="#cb61-204" aria-hidden="true" tabindex="-1"></a>        <span class="st">"Gene-level metadata (var)"</span>,</span>
+<span id="cb61-205"><a href="#cb61-205" aria-hidden="true" tabindex="-1"></a>        <span class="st">"Embeddings available"</span></span>
+<span id="cb61-206"><a href="#cb61-206" aria-hidden="true" tabindex="-1"></a>    ],</span>
+<span id="cb61-207"><a href="#cb61-207" aria-hidden="true" tabindex="-1"></a>    <span class="st">"Summary"</span>: [</span>
+<span id="cb61-208"><a href="#cb61-208" aria-hidden="true" tabindex="-1"></a>        <span class="ss">f"</span><span class="sc">{</span>adata<span class="sc">.</span>n_obs<span class="sc">:,}</span><span class="ss">"</span>,</span>
+<span id="cb61-209"><a href="#cb61-209" aria-hidden="true" tabindex="-1"></a>        <span class="ss">f"</span><span class="sc">{</span>adata<span class="sc">.</span>n_vars<span class="sc">:,}</span><span class="ss">"</span>,</span>
+<span id="cb61-210"><a href="#cb61-210" aria-hidden="true" tabindex="-1"></a>        wrap(<span class="st">", "</span>.join(adata.obs.columns), width<span class="op">=</span><span class="dv">90</span>),</span>
+<span id="cb61-211"><a href="#cb61-211" aria-hidden="true" tabindex="-1"></a>        wrap(<span class="st">", "</span>.join(adata.var.columns), width<span class="op">=</span><span class="dv">90</span>),</span>
+<span id="cb61-212"><a href="#cb61-212" aria-hidden="true" tabindex="-1"></a>        <span class="st">", "</span>.join(adata.obsm.keys())</span>
+<span id="cb61-213"><a href="#cb61-213" aria-hidden="true" tabindex="-1"></a>    ]</span>
+<span id="cb61-214"><a href="#cb61-214" aria-hidden="true" tabindex="-1"></a>})</span>
+<span id="cb61-215"><a href="#cb61-215" aria-hidden="true" tabindex="-1"></a>overview</span>
+<span id="cb61-216"><a href="#cb61-216" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb61-217"><a href="#cb61-217" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-218"><a href="#cb61-218" aria-hidden="true" tabindex="-1"></a><span class="fu">## Categorical distributions</span></span>
+<span id="cb61-219"><a href="#cb61-219" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-222"><a href="#cb61-222" aria-hidden="true" tabindex="-1"></a><span class="in">```{python}</span></span>
+<span id="cb61-223"><a href="#cb61-223" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> summarize_categorical(adata, col):</span>
+<span id="cb61-224"><a href="#cb61-224" aria-hidden="true" tabindex="-1"></a>    vc <span class="op">=</span> adata.obs[col].value_counts()</span>
+<span id="cb61-225"><a href="#cb61-225" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> vc.reset_index().rename(columns<span class="op">=</span>{<span class="st">"index"</span>: col, col: <span class="st">"n_cells"</span>})</span>
+<span id="cb61-226"><a href="#cb61-226" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-227"><a href="#cb61-227" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> col <span class="kw">in</span> [<span class="st">"condition"</span>, <span class="st">"cell_type"</span>, <span class="st">"replicate"</span>]:</span>
+<span id="cb61-228"><a href="#cb61-228" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> col <span class="kw">in</span> adata.obs:</span>
+<span id="cb61-229"><a href="#cb61-229" aria-hidden="true" tabindex="-1"></a>        display(summarize_categorical(adata, col).head(<span class="dv">50</span>))</span>
+<span id="cb61-230"><a href="#cb61-230" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb61-231"><a href="#cb61-231" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-232"><a href="#cb61-232" aria-hidden="true" tabindex="-1"></a>------------------------------------------------------------------------</span>
+<span id="cb61-233"><a href="#cb61-233" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-234"><a href="#cb61-234" aria-hidden="true" tabindex="-1"></a><span class="fu"># 5. Preprocessing and gene selection (HVGs)</span></span>
+<span id="cb61-235"><a href="#cb61-235" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-238"><a href="#cb61-238" aria-hidden="true" tabindex="-1"></a><span class="in">```{python}</span></span>
+<span id="cb61-239"><a href="#cb61-239" aria-hidden="true" tabindex="-1"></a>MIN_CELLS <span class="op">=</span> <span class="dv">3</span></span>
+<span id="cb61-240"><a href="#cb61-240" aria-hidden="true" tabindex="-1"></a>TARGET_SUM <span class="op">=</span> <span class="fl">1e4</span></span>
+<span id="cb61-241"><a href="#cb61-241" aria-hidden="true" tabindex="-1"></a>N_TOP_GENES <span class="op">=</span> <span class="dv">3000</span></span>
+<span id="cb61-242"><a href="#cb61-242" aria-hidden="true" tabindex="-1"></a>HVG_FLAVOR <span class="op">=</span> <span class="st">"seurat_v3"</span></span>
+<span id="cb61-243"><a href="#cb61-243" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-244"><a href="#cb61-244" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"Preprocessing choices:"</span>)</span>
+<span id="cb61-245"><a href="#cb61-245" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"  min_cells: </span><span class="sc">{</span>MIN_CELLS<span class="sc">}</span><span class="ss">"</span>)</span>
+<span id="cb61-246"><a href="#cb61-246" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"  target_sum: </span><span class="sc">{</span>TARGET_SUM<span class="sc">}</span><span class="ss">"</span>)</span>
+<span id="cb61-247"><a href="#cb61-247" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"  n_top_genes (HVGs): </span><span class="sc">{</span>N_TOP_GENES<span class="sc">}</span><span class="ss">"</span>)</span>
+<span id="cb61-248"><a href="#cb61-248" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"  HVG flavor: </span><span class="sc">{</span>HVG_FLAVOR<span class="sc">}</span><span class="ss">"</span>)</span>
+<span id="cb61-249"><a href="#cb61-249" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb61-250"><a href="#cb61-250" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-253"><a href="#cb61-253" aria-hidden="true" tabindex="-1"></a><span class="in">```{python}</span></span>
+<span id="cb61-254"><a href="#cb61-254" aria-hidden="true" tabindex="-1"></a>adata.layers[<span class="st">"counts"</span>] <span class="op">=</span> adata.X.copy()</span>
+<span id="cb61-255"><a href="#cb61-255" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb61-256"><a href="#cb61-256" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-259"><a href="#cb61-259" aria-hidden="true" tabindex="-1"></a><span class="in">```{python}</span></span>
+<span id="cb61-260"><a href="#cb61-260" aria-hidden="true" tabindex="-1"></a>before <span class="op">=</span> adata.n_vars</span>
+<span id="cb61-261"><a href="#cb61-261" aria-hidden="true" tabindex="-1"></a>sc.pp.filter_genes(adata, min_cells<span class="op">=</span>MIN_CELLS)</span>
+<span id="cb61-262"><a href="#cb61-262" aria-hidden="true" tabindex="-1"></a>after <span class="op">=</span> adata.n_vars</span>
+<span id="cb61-263"><a href="#cb61-263" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"Genes: </span><span class="sc">{</span>before<span class="sc">}</span><span class="ss"> -&gt; </span><span class="sc">{</span>after<span class="sc">}</span><span class="ss"> after min_cells=</span><span class="sc">{</span>MIN_CELLS<span class="sc">}</span><span class="ss">"</span>)</span>
+<span id="cb61-264"><a href="#cb61-264" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb61-265"><a href="#cb61-265" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-268"><a href="#cb61-268" aria-hidden="true" tabindex="-1"></a><span class="in">```{python}</span></span>
+<span id="cb61-269"><a href="#cb61-269" aria-hidden="true" tabindex="-1"></a>sc.pp.normalize_total(adata, target_sum<span class="op">=</span>TARGET_SUM)</span>
+<span id="cb61-270"><a href="#cb61-270" aria-hidden="true" tabindex="-1"></a>sc.pp.log1p(adata)</span>
+<span id="cb61-271"><a href="#cb61-271" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb61-272"><a href="#cb61-272" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-275"><a href="#cb61-275" aria-hidden="true" tabindex="-1"></a><span class="in">```{python}</span></span>
+<span id="cb61-276"><a href="#cb61-276" aria-hidden="true" tabindex="-1"></a>sc.pp.highly_variable_genes(</span>
+<span id="cb61-277"><a href="#cb61-277" aria-hidden="true" tabindex="-1"></a>    adata,</span>
+<span id="cb61-278"><a href="#cb61-278" aria-hidden="true" tabindex="-1"></a>    n_top_genes<span class="op">=</span>N_TOP_GENES,</span>
+<span id="cb61-279"><a href="#cb61-279" aria-hidden="true" tabindex="-1"></a>    flavor<span class="op">=</span>HVG_FLAVOR,</span>
+<span id="cb61-280"><a href="#cb61-280" aria-hidden="true" tabindex="-1"></a>    layer<span class="op">=</span><span class="st">"counts"</span>,</span>
+<span id="cb61-281"><a href="#cb61-281" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb61-282"><a href="#cb61-282" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-283"><a href="#cb61-283" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"HVGs selected:"</span>, <span class="bu">int</span>(adata.var[<span class="st">"highly_variable"</span>].<span class="bu">sum</span>()))</span>
+<span id="cb61-284"><a href="#cb61-284" aria-hidden="true" tabindex="-1"></a>adata <span class="op">=</span> adata[:, adata.var[<span class="st">"highly_variable"</span>]].copy()</span>
+<span id="cb61-285"><a href="#cb61-285" aria-hidden="true" tabindex="-1"></a>adata</span>
+<span id="cb61-286"><a href="#cb61-286" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb61-287"><a href="#cb61-287" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-288"><a href="#cb61-288" aria-hidden="true" tabindex="-1"></a>------------------------------------------------------------------------</span>
+<span id="cb61-289"><a href="#cb61-289" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-290"><a href="#cb61-290" aria-hidden="true" tabindex="-1"></a><span class="fu"># 6. Prepare data for CoGAPS</span></span>
+<span id="cb61-291"><a href="#cb61-291" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-294"><a href="#cb61-294" aria-hidden="true" tabindex="-1"></a><span class="in">```{python}</span></span>
+<span id="cb61-295"><a href="#cb61-295" aria-hidden="true" tabindex="-1"></a>adata_cogaps <span class="op">=</span> adata.T.copy()  <span class="co"># genes × cells</span></span>
+<span id="cb61-296"><a href="#cb61-296" aria-hidden="true" tabindex="-1"></a>adata_cogaps.X <span class="op">=</span> np.asarray(adata_cogaps.X.toarray(), dtype<span class="op">=</span>np.float64)</span>
+<span id="cb61-297"><a href="#cb61-297" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-298"><a href="#cb61-298" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(adata_cogaps)</span>
+<span id="cb61-299"><a href="#cb61-299" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"Matrix dtype:"</span>, adata_cogaps.X.dtype)</span>
+<span id="cb61-300"><a href="#cb61-300" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb61-301"><a href="#cb61-301" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-302"><a href="#cb61-302" aria-hidden="true" tabindex="-1"></a>------------------------------------------------------------------------</span>
+<span id="cb61-303"><a href="#cb61-303" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-304"><a href="#cb61-304" aria-hidden="true" tabindex="-1"></a><span class="fu"># 7. Run CoGAPS (single-process; safe for Quarto render)</span></span>
+<span id="cb61-305"><a href="#cb61-305" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-308"><a href="#cb61-308" aria-hidden="true" tabindex="-1"></a><span class="in">```{python}</span></span>
+<span id="cb61-309"><a href="#cb61-309" aria-hidden="true" tabindex="-1"></a>N_PATTERNS <span class="op">=</span> <span class="dv">5</span></span>
+<span id="cb61-310"><a href="#cb61-310" aria-hidden="true" tabindex="-1"></a>N_ITER <span class="op">=</span> <span class="dv">2000</span>          <span class="co"># classroom default; increase for final analysis runs</span></span>
+<span id="cb61-311"><a href="#cb61-311" aria-hidden="true" tabindex="-1"></a>SEED <span class="op">=</span> <span class="dv">42</span></span>
+<span id="cb61-312"><a href="#cb61-312" aria-hidden="true" tabindex="-1"></a>USE_SPARSE_OPT <span class="op">=</span> <span class="va">True</span></span>
+<span id="cb61-313"><a href="#cb61-313" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-314"><a href="#cb61-314" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"CoGAPS choices:"</span>)</span>
+<span id="cb61-315"><a href="#cb61-315" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"  nPatterns: </span><span class="sc">{</span>N_PATTERNS<span class="sc">}</span><span class="ss">"</span>)</span>
+<span id="cb61-316"><a href="#cb61-316" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"  nIterations: </span><span class="sc">{</span>N_ITER<span class="sc">}</span><span class="ss">"</span>)</span>
+<span id="cb61-317"><a href="#cb61-317" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"  seed: </span><span class="sc">{</span>SEED<span class="sc">}</span><span class="ss">"</span>)</span>
+<span id="cb61-318"><a href="#cb61-318" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"  useSparseOptimization: </span><span class="sc">{</span>USE_SPARSE_OPT<span class="sc">}</span><span class="ss">"</span>)</span>
+<span id="cb61-319"><a href="#cb61-319" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb61-320"><a href="#cb61-320" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-323"><a href="#cb61-323" aria-hidden="true" tabindex="-1"></a><span class="in">```{python}</span></span>
+<span id="cb61-324"><a href="#cb61-324" aria-hidden="true" tabindex="-1"></a>os.makedirs(<span class="st">"data"</span>, exist_ok<span class="op">=</span><span class="va">True</span>)</span>
+<span id="cb61-325"><a href="#cb61-325" aria-hidden="true" tabindex="-1"></a>result_path <span class="op">=</span> <span class="st">"data/cogaps_result.h5ad"</span></span>
+<span id="cb61-326"><a href="#cb61-326" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-327"><a href="#cb61-327" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> os.path.exists(result_path):</span>
+<span id="cb61-328"><a href="#cb61-328" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(<span class="ss">f"Loading existing CoGAPS result: </span><span class="sc">{</span>result_path<span class="sc">}</span><span class="ss">"</span>)</span>
+<span id="cb61-329"><a href="#cb61-329" aria-hidden="true" tabindex="-1"></a>    result <span class="op">=</span> sc.read_h5ad(result_path)</span>
+<span id="cb61-330"><a href="#cb61-330" aria-hidden="true" tabindex="-1"></a><span class="cf">else</span>:</span>
+<span id="cb61-331"><a href="#cb61-331" aria-hidden="true" tabindex="-1"></a>    params <span class="op">=</span> CoParams(adata<span class="op">=</span>adata_cogaps)</span>
+<span id="cb61-332"><a href="#cb61-332" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-333"><a href="#cb61-333" aria-hidden="true" tabindex="-1"></a>    setParams(</span>
+<span id="cb61-334"><a href="#cb61-334" aria-hidden="true" tabindex="-1"></a>        params,</span>
+<span id="cb61-335"><a href="#cb61-335" aria-hidden="true" tabindex="-1"></a>        {</span>
+<span id="cb61-336"><a href="#cb61-336" aria-hidden="true" tabindex="-1"></a>            <span class="st">"nPatterns"</span>: N_PATTERNS,</span>
+<span id="cb61-337"><a href="#cb61-337" aria-hidden="true" tabindex="-1"></a>            <span class="st">"nIterations"</span>: N_ITER,</span>
+<span id="cb61-338"><a href="#cb61-338" aria-hidden="true" tabindex="-1"></a>            <span class="st">"seed"</span>: SEED,</span>
+<span id="cb61-339"><a href="#cb61-339" aria-hidden="true" tabindex="-1"></a>            <span class="st">"useSparseOptimization"</span>: USE_SPARSE_OPT,</span>
+<span id="cb61-340"><a href="#cb61-340" aria-hidden="true" tabindex="-1"></a>            <span class="co"># </span><span class="al">NOTE</span><span class="co">: Do NOT set "distributed" inside this notebook.</span></span>
+<span id="cb61-341"><a href="#cb61-341" aria-hidden="true" tabindex="-1"></a>        },</span>
+<span id="cb61-342"><a href="#cb61-342" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb61-343"><a href="#cb61-343" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-344"><a href="#cb61-344" aria-hidden="true" tabindex="-1"></a>    params.printParams()</span>
+<span id="cb61-345"><a href="#cb61-345" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-346"><a href="#cb61-346" aria-hidden="true" tabindex="-1"></a>    start <span class="op">=</span> time.time()</span>
+<span id="cb61-347"><a href="#cb61-347" aria-hidden="true" tabindex="-1"></a>    result <span class="op">=</span> CoGAPS(adata_cogaps, params)</span>
+<span id="cb61-348"><a href="#cb61-348" aria-hidden="true" tabindex="-1"></a>    elapsed <span class="op">=</span> time.time() <span class="op">-</span> start</span>
+<span id="cb61-349"><a href="#cb61-349" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-350"><a href="#cb61-350" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(<span class="ss">f"CoGAPS finished in </span><span class="sc">{</span>elapsed<span class="op">/</span><span class="dv">60</span><span class="sc">:.2f}</span><span class="ss"> minutes"</span>)</span>
+<span id="cb61-351"><a href="#cb61-351" aria-hidden="true" tabindex="-1"></a>    result.write_h5ad(result_path)</span>
+<span id="cb61-352"><a href="#cb61-352" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(<span class="ss">f"Saved: </span><span class="sc">{</span>result_path<span class="sc">}</span><span class="ss">"</span>)</span>
+<span id="cb61-353"><a href="#cb61-353" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-354"><a href="#cb61-354" aria-hidden="true" tabindex="-1"></a>result</span>
+<span id="cb61-355"><a href="#cb61-355" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb61-356"><a href="#cb61-356" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-357"><a href="#cb61-357" aria-hidden="true" tabindex="-1"></a>------------------------------------------------------------------------</span>
+<span id="cb61-358"><a href="#cb61-358" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-359"><a href="#cb61-359" aria-hidden="true" tabindex="-1"></a><span class="fu"># 8. Extract matrices A and P</span></span>
+<span id="cb61-360"><a href="#cb61-360" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-363"><a href="#cb61-363" aria-hidden="true" tabindex="-1"></a><span class="in">```{python}</span></span>
+<span id="cb61-364"><a href="#cb61-364" aria-hidden="true" tabindex="-1"></a>A <span class="op">=</span> result.obs.<span class="bu">filter</span>(regex<span class="op">=</span><span class="st">"Pattern"</span>)   <span class="co"># genes × patterns</span></span>
+<span id="cb61-365"><a href="#cb61-365" aria-hidden="true" tabindex="-1"></a>P <span class="op">=</span> result.var.<span class="bu">filter</span>(regex<span class="op">=</span><span class="st">"Pattern"</span>)   <span class="co"># cells × patterns</span></span>
+<span id="cb61-366"><a href="#cb61-366" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-367"><a href="#cb61-367" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"A:"</span>, A.shape, <span class="st">"| P:"</span>, P.shape)</span>
+<span id="cb61-368"><a href="#cb61-368" aria-hidden="true" tabindex="-1"></a>A.head()</span>
+<span id="cb61-369"><a href="#cb61-369" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb61-370"><a href="#cb61-370" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-371"><a href="#cb61-371" aria-hidden="true" tabindex="-1"></a>------------------------------------------------------------------------</span>
+<span id="cb61-372"><a href="#cb61-372" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-373"><a href="#cb61-373" aria-hidden="true" tabindex="-1"></a><span class="fu"># 9. Attach pattern activities back to cells</span></span>
+<span id="cb61-374"><a href="#cb61-374" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-377"><a href="#cb61-377" aria-hidden="true" tabindex="-1"></a><span class="in">```{python}</span></span>
+<span id="cb61-378"><a href="#cb61-378" aria-hidden="true" tabindex="-1"></a>P_cells <span class="op">=</span> P.copy()</span>
+<span id="cb61-379"><a href="#cb61-379" aria-hidden="true" tabindex="-1"></a>P_cells.index <span class="op">=</span> adata.obs_names</span>
+<span id="cb61-380"><a href="#cb61-380" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-381"><a href="#cb61-381" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> col <span class="kw">in</span> P_cells.columns:</span>
+<span id="cb61-382"><a href="#cb61-382" aria-hidden="true" tabindex="-1"></a>    adata.obs[col] <span class="op">=</span> P_cells[col].values</span>
+<span id="cb61-383"><a href="#cb61-383" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-384"><a href="#cb61-384" aria-hidden="true" tabindex="-1"></a>pattern_names <span class="op">=</span> <span class="bu">list</span>(P_cells.columns)</span>
+<span id="cb61-385"><a href="#cb61-385" aria-hidden="true" tabindex="-1"></a>pattern_names[:<span class="dv">5</span>], adata.obs[pattern_names].head()</span>
+<span id="cb61-386"><a href="#cb61-386" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb61-387"><a href="#cb61-387" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-388"><a href="#cb61-388" aria-hidden="true" tabindex="-1"></a>------------------------------------------------------------------------</span>
+<span id="cb61-389"><a href="#cb61-389" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-390"><a href="#cb61-390" aria-hidden="true" tabindex="-1"></a><span class="fu"># 10. Q1 — Which programs respond to IFN-β stimulation?</span></span>
+<span id="cb61-391"><a href="#cb61-391" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-394"><a href="#cb61-394" aria-hidden="true" tabindex="-1"></a><span class="in">```{python}</span></span>
+<span id="cb61-395"><a href="#cb61-395" aria-hidden="true" tabindex="-1"></a>cond <span class="op">=</span> (adata.obs[<span class="st">"condition"</span>] <span class="op">==</span> <span class="st">"stim"</span>).astype(<span class="bu">int</span>)</span>
+<span id="cb61-396"><a href="#cb61-396" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-397"><a href="#cb61-397" aria-hidden="true" tabindex="-1"></a>corrs <span class="op">=</span> {pat: np.corrcoef(adata.obs[pat], cond)[<span class="dv">0</span>, <span class="dv">1</span>] <span class="cf">for</span> pat <span class="kw">in</span> pattern_names}</span>
+<span id="cb61-398"><a href="#cb61-398" aria-hidden="true" tabindex="-1"></a>corr_series <span class="op">=</span> pd.Series(corrs).sort_values(ascending<span class="op">=</span><span class="va">False</span>)</span>
+<span id="cb61-399"><a href="#cb61-399" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-400"><a href="#cb61-400" aria-hidden="true" tabindex="-1"></a>corr_table <span class="op">=</span> (</span>
+<span id="cb61-401"><a href="#cb61-401" aria-hidden="true" tabindex="-1"></a>    corr_series.rename(<span class="st">"Correlation with IFN-β stimulation (stim=1, ctrl=0)"</span>)</span>
+<span id="cb61-402"><a href="#cb61-402" aria-hidden="true" tabindex="-1"></a>    .to_frame()</span>
+<span id="cb61-403"><a href="#cb61-403" aria-hidden="true" tabindex="-1"></a>    .<span class="bu">round</span>(<span class="dv">3</span>)</span>
+<span id="cb61-404"><a href="#cb61-404" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb61-405"><a href="#cb61-405" aria-hidden="true" tabindex="-1"></a>corr_table</span>
+<span id="cb61-406"><a href="#cb61-406" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb61-407"><a href="#cb61-407" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-410"><a href="#cb61-410" aria-hidden="true" tabindex="-1"></a><span class="in">```{python}</span></span>
+<span id="cb61-411"><a href="#cb61-411" aria-hidden="true" tabindex="-1"></a>isg_pattern <span class="op">=</span> corr_series.index[<span class="dv">0</span>]</span>
+<span id="cb61-412"><a href="#cb61-412" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"Top IFN-associated pattern:"</span>, isg_pattern, <span class="st">"corr ="</span>, <span class="bu">round</span>(<span class="bu">float</span>(corr_series.iloc[<span class="dv">0</span>]), <span class="dv">3</span>))</span>
+<span id="cb61-413"><a href="#cb61-413" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb61-414"><a href="#cb61-414" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-417"><a href="#cb61-417" aria-hidden="true" tabindex="-1"></a><span class="in">```{python}</span></span>
+<span id="cb61-418"><a href="#cb61-418" aria-hidden="true" tabindex="-1"></a>top_isg_genes <span class="op">=</span> A[isg_pattern].sort_values(ascending<span class="op">=</span><span class="va">False</span>).head(<span class="dv">30</span>)</span>
+<span id="cb61-419"><a href="#cb61-419" aria-hidden="true" tabindex="-1"></a>top_isg_genes</span>
+<span id="cb61-420"><a href="#cb61-420" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb61-421"><a href="#cb61-421" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-422"><a href="#cb61-422" aria-hidden="true" tabindex="-1"></a>------------------------------------------------------------------------</span>
+<span id="cb61-423"><a href="#cb61-423" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-424"><a href="#cb61-424" aria-hidden="true" tabindex="-1"></a><span class="fu"># 11. Q2 — Identity vs activity programs</span></span>
+<span id="cb61-425"><a href="#cb61-425" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-428"><a href="#cb61-428" aria-hidden="true" tabindex="-1"></a><span class="in">```{python}</span></span>
+<span id="cb61-429"><a href="#cb61-429" aria-hidden="true" tabindex="-1"></a>mean_by_cond <span class="op">=</span> adata.obs.groupby(<span class="st">"condition"</span>)[pattern_names].mean()</span>
+<span id="cb61-430"><a href="#cb61-430" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-431"><a href="#cb61-431" aria-hidden="true" tabindex="-1"></a>plt.figure(figsize<span class="op">=</span>(<span class="dv">9</span>, <span class="dv">3</span>))</span>
+<span id="cb61-432"><a href="#cb61-432" aria-hidden="true" tabindex="-1"></a>sns.heatmap(mean_by_cond, annot<span class="op">=</span><span class="va">True</span>, fmt<span class="op">=</span><span class="st">".2f"</span>)</span>
+<span id="cb61-433"><a href="#cb61-433" aria-hidden="true" tabindex="-1"></a>plt.title(<span class="st">"Mean CoGAPS pattern activity by condition"</span>)</span>
+<span id="cb61-434"><a href="#cb61-434" aria-hidden="true" tabindex="-1"></a>plt.ylabel(<span class="st">"Condition"</span>)</span>
+<span id="cb61-435"><a href="#cb61-435" aria-hidden="true" tabindex="-1"></a>plt.xlabel(<span class="st">"Pattern"</span>)</span>
+<span id="cb61-436"><a href="#cb61-436" aria-hidden="true" tabindex="-1"></a>plt.tight_layout()</span>
+<span id="cb61-437"><a href="#cb61-437" aria-hidden="true" tabindex="-1"></a>plt.show()</span>
+<span id="cb61-438"><a href="#cb61-438" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb61-439"><a href="#cb61-439" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-442"><a href="#cb61-442" aria-hidden="true" tabindex="-1"></a><span class="in">```{python}</span></span>
+<span id="cb61-443"><a href="#cb61-443" aria-hidden="true" tabindex="-1"></a>mean_by_type <span class="op">=</span> adata.obs.groupby(<span class="st">"cell_type"</span>)[pattern_names].mean()</span>
+<span id="cb61-444"><a href="#cb61-444" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-445"><a href="#cb61-445" aria-hidden="true" tabindex="-1"></a>sns.clustermap(mean_by_type, figsize<span class="op">=</span>(<span class="dv">10</span>, <span class="dv">8</span>), standard_scale<span class="op">=</span><span class="dv">0</span>)</span>
+<span id="cb61-446"><a href="#cb61-446" aria-hidden="true" tabindex="-1"></a>plt.suptitle(<span class="st">"Pattern activity by immune cell type"</span>, y<span class="op">=</span><span class="fl">1.02</span>)</span>
+<span id="cb61-447"><a href="#cb61-447" aria-hidden="true" tabindex="-1"></a>plt.show()</span>
+<span id="cb61-448"><a href="#cb61-448" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb61-449"><a href="#cb61-449" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-452"><a href="#cb61-452" aria-hidden="true" tabindex="-1"></a><span class="in">```{python}</span></span>
+<span id="cb61-453"><a href="#cb61-453" aria-hidden="true" tabindex="-1"></a>sc.pl.stacked_violin(</span>
+<span id="cb61-454"><a href="#cb61-454" aria-hidden="true" tabindex="-1"></a>    adata,</span>
+<span id="cb61-455"><a href="#cb61-455" aria-hidden="true" tabindex="-1"></a>    pattern_names,</span>
+<span id="cb61-456"><a href="#cb61-456" aria-hidden="true" tabindex="-1"></a>    groupby<span class="op">=</span><span class="st">"cell_type"</span>,</span>
+<span id="cb61-457"><a href="#cb61-457" aria-hidden="true" tabindex="-1"></a>    figsize<span class="op">=</span>(<span class="dv">14</span>, <span class="dv">10</span>),</span>
+<span id="cb61-458"><a href="#cb61-458" aria-hidden="true" tabindex="-1"></a>    stripplot<span class="op">=</span><span class="va">False</span>,</span>
+<span id="cb61-459"><a href="#cb61-459" aria-hidden="true" tabindex="-1"></a>    scale<span class="op">=</span><span class="st">"width"</span>,</span>
+<span id="cb61-460"><a href="#cb61-460" aria-hidden="true" tabindex="-1"></a>    yticklabels<span class="op">=</span><span class="va">True</span>,</span>
+<span id="cb61-461"><a href="#cb61-461" aria-hidden="true" tabindex="-1"></a>    use_raw<span class="op">=</span><span class="va">False</span>,</span>
+<span id="cb61-462"><a href="#cb61-462" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb61-463"><a href="#cb61-463" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb61-464"><a href="#cb61-464" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-467"><a href="#cb61-467" aria-hidden="true" tabindex="-1"></a><span class="in">```{python}</span></span>
+<span id="cb61-468"><a href="#cb61-468" aria-hidden="true" tabindex="-1"></a>sc.pl.stacked_violin(</span>
+<span id="cb61-469"><a href="#cb61-469" aria-hidden="true" tabindex="-1"></a>    adata,</span>
+<span id="cb61-470"><a href="#cb61-470" aria-hidden="true" tabindex="-1"></a>    pattern_names,</span>
+<span id="cb61-471"><a href="#cb61-471" aria-hidden="true" tabindex="-1"></a>    groupby<span class="op">=</span><span class="st">"condition"</span>,</span>
+<span id="cb61-472"><a href="#cb61-472" aria-hidden="true" tabindex="-1"></a>    figsize<span class="op">=</span>(<span class="dv">12</span>, <span class="dv">6</span>),</span>
+<span id="cb61-473"><a href="#cb61-473" aria-hidden="true" tabindex="-1"></a>    stripplot<span class="op">=</span><span class="va">False</span>,</span>
+<span id="cb61-474"><a href="#cb61-474" aria-hidden="true" tabindex="-1"></a>    scale<span class="op">=</span><span class="st">"width"</span>,</span>
+<span id="cb61-475"><a href="#cb61-475" aria-hidden="true" tabindex="-1"></a>    yticklabels<span class="op">=</span><span class="va">True</span>,</span>
+<span id="cb61-476"><a href="#cb61-476" aria-hidden="true" tabindex="-1"></a>    use_raw<span class="op">=</span><span class="va">False</span>,</span>
+<span id="cb61-477"><a href="#cb61-477" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb61-478"><a href="#cb61-478" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb61-479"><a href="#cb61-479" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-480"><a href="#cb61-480" aria-hidden="true" tabindex="-1"></a>------------------------------------------------------------------------</span>
+<span id="cb61-481"><a href="#cb61-481" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-482"><a href="#cb61-482" aria-hidden="true" tabindex="-1"></a><span class="fu"># 12. Visualize programs on UMAP</span></span>
+<span id="cb61-483"><a href="#cb61-483" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-486"><a href="#cb61-486" aria-hidden="true" tabindex="-1"></a><span class="in">```{python}</span></span>
+<span id="cb61-487"><a href="#cb61-487" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> <span class="st">"X_umap"</span> <span class="kw">not</span> <span class="kw">in</span> adata.obsm:</span>
+<span id="cb61-488"><a href="#cb61-488" aria-hidden="true" tabindex="-1"></a>    sc.pp.pca(adata)</span>
+<span id="cb61-489"><a href="#cb61-489" aria-hidden="true" tabindex="-1"></a>    sc.pp.neighbors(adata)</span>
+<span id="cb61-490"><a href="#cb61-490" aria-hidden="true" tabindex="-1"></a>    sc.tl.umap(adata)</span>
+<span id="cb61-491"><a href="#cb61-491" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-492"><a href="#cb61-492" aria-hidden="true" tabindex="-1"></a>sc.pl.umap(adata, color<span class="op">=</span>[<span class="st">"condition"</span>, isg_pattern], color_map<span class="op">=</span><span class="st">"viridis"</span>, wspace<span class="op">=</span><span class="fl">0.4</span>)</span>
+<span id="cb61-493"><a href="#cb61-493" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb61-494"><a href="#cb61-494" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-497"><a href="#cb61-497" aria-hidden="true" tabindex="-1"></a><span class="in">```{python}</span></span>
+<span id="cb61-498"><a href="#cb61-498" aria-hidden="true" tabindex="-1"></a>sc.pl.umap(adata, color<span class="op">=</span>pattern_names, color_map<span class="op">=</span><span class="st">"viridis"</span>, ncols<span class="op">=</span><span class="dv">3</span>)</span>
+<span id="cb61-499"><a href="#cb61-499" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb61-500"><a href="#cb61-500" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-501"><a href="#cb61-501" aria-hidden="true" tabindex="-1"></a>------------------------------------------------------------------------</span>
+<span id="cb61-502"><a href="#cb61-502" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-503"><a href="#cb61-503" aria-hidden="true" tabindex="-1"></a><span class="fu"># 13. Q3 — IFN program strength across immune cell types</span></span>
+<span id="cb61-504"><a href="#cb61-504" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-507"><a href="#cb61-507" aria-hidden="true" tabindex="-1"></a><span class="in">```{python}</span></span>
+<span id="cb61-508"><a href="#cb61-508" aria-hidden="true" tabindex="-1"></a>df_isg <span class="op">=</span> adata.obs[[<span class="st">"cell_type"</span>, <span class="st">"condition"</span>, isg_pattern]].copy()</span>
+<span id="cb61-509"><a href="#cb61-509" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-510"><a href="#cb61-510" aria-hidden="true" tabindex="-1"></a>summary_by_type <span class="op">=</span> (</span>
+<span id="cb61-511"><a href="#cb61-511" aria-hidden="true" tabindex="-1"></a>    df_isg.groupby(<span class="st">"cell_type"</span>)[isg_pattern]</span>
+<span id="cb61-512"><a href="#cb61-512" aria-hidden="true" tabindex="-1"></a>    .agg([<span class="st">"mean"</span>, <span class="st">"median"</span>, <span class="st">"std"</span>, <span class="st">"count"</span>])</span>
+<span id="cb61-513"><a href="#cb61-513" aria-hidden="true" tabindex="-1"></a>    .sort_values(<span class="st">"mean"</span>, ascending<span class="op">=</span><span class="va">False</span>)</span>
+<span id="cb61-514"><a href="#cb61-514" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb61-515"><a href="#cb61-515" aria-hidden="true" tabindex="-1"></a>summary_by_type</span>
+<span id="cb61-516"><a href="#cb61-516" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb61-517"><a href="#cb61-517" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-520"><a href="#cb61-520" aria-hidden="true" tabindex="-1"></a><span class="in">```{python}</span></span>
+<span id="cb61-521"><a href="#cb61-521" aria-hidden="true" tabindex="-1"></a>plt.figure(figsize<span class="op">=</span>(<span class="dv">12</span>, <span class="dv">5</span>))</span>
+<span id="cb61-522"><a href="#cb61-522" aria-hidden="true" tabindex="-1"></a>sns.boxplot(data<span class="op">=</span>df_isg, x<span class="op">=</span><span class="st">"cell_type"</span>, y<span class="op">=</span>isg_pattern, hue<span class="op">=</span><span class="st">"condition"</span>)</span>
+<span id="cb61-523"><a href="#cb61-523" aria-hidden="true" tabindex="-1"></a>plt.xticks(rotation<span class="op">=</span><span class="dv">45</span>, ha<span class="op">=</span><span class="st">"right"</span>)</span>
+<span id="cb61-524"><a href="#cb61-524" aria-hidden="true" tabindex="-1"></a>plt.ylabel(<span class="ss">f"</span><span class="sc">{</span>isg_pattern<span class="sc">}</span><span class="ss"> activity"</span>)</span>
+<span id="cb61-525"><a href="#cb61-525" aria-hidden="true" tabindex="-1"></a>plt.title(<span class="st">"IFN-response program activity by cell type and condition"</span>)</span>
+<span id="cb61-526"><a href="#cb61-526" aria-hidden="true" tabindex="-1"></a>plt.tight_layout()</span>
+<span id="cb61-527"><a href="#cb61-527" aria-hidden="true" tabindex="-1"></a>plt.show()</span>
+<span id="cb61-528"><a href="#cb61-528" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb61-529"><a href="#cb61-529" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-530"><a href="#cb61-530" aria-hidden="true" tabindex="-1"></a>------------------------------------------------------------------------</span>
+<span id="cb61-531"><a href="#cb61-531" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-532"><a href="#cb61-532" aria-hidden="true" tabindex="-1"></a><span class="fu"># 14. Pattern gene summaries (interpretability)</span></span>
+<span id="cb61-533"><a href="#cb61-533" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-536"><a href="#cb61-536" aria-hidden="true" tabindex="-1"></a><span class="in">```{python}</span></span>
+<span id="cb61-537"><a href="#cb61-537" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> pat <span class="kw">in</span> pattern_names:</span>
+<span id="cb61-538"><a href="#cb61-538" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(<span class="ss">f"</span><span class="ch">\n</span><span class="ss">=== </span><span class="sc">{</span>pat<span class="sc">}</span><span class="ss">: top genes ==="</span>)</span>
+<span id="cb61-539"><a href="#cb61-539" aria-hidden="true" tabindex="-1"></a>    display(A[pat].sort_values(ascending<span class="op">=</span><span class="va">False</span>).head(<span class="dv">12</span>))</span>
+<span id="cb61-540"><a href="#cb61-540" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb61-541"><a href="#cb61-541" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-542"><a href="#cb61-542" aria-hidden="true" tabindex="-1"></a>------------------------------------------------------------------------</span>
+<span id="cb61-543"><a href="#cb61-543" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-544"><a href="#cb61-544" aria-hidden="true" tabindex="-1"></a><span class="fu"># 15. Optional: distributed CoGAPS (advanced)</span></span>
+<span id="cb61-545"><a href="#cb61-545" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-546"><a href="#cb61-546" aria-hidden="true" tabindex="-1"></a>Your error happened because the distributed script is currently trying to read <span class="in">`kang_counts_25k.h5ad`</span> from the **project directory**, then downloading a file that ends up **corrupt/empty** (0 bytes), which causes:</span>
+<span id="cb61-547"><a href="#cb61-547" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-548"><a href="#cb61-548" aria-hidden="true" tabindex="-1"></a><span class="in">`OSError: Unable to open file (file signature not found)`</span></span>
+<span id="cb61-549"><a href="#cb61-549" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-550"><a href="#cb61-550" aria-hidden="true" tabindex="-1"></a>Then run distributed from **Terminal**:</span>
+<span id="cb61-551"><a href="#cb61-551" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-552"><a href="#cb61-552" aria-hidden="true" tabindex="-1"></a><span class="in">``` bash</span></span>
+<span id="cb61-553"><a href="#cb61-553" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> /home/rstudio/project</span>
+<span id="cb61-554"><a href="#cb61-554" aria-hidden="true" tabindex="-1"></a><span class="bu">source</span> _environment</span>
+<span id="cb61-555"><a href="#cb61-555" aria-hidden="true" tabindex="-1"></a><span class="ex">./.venv/bin/python</span> run_pycogaps_distributed.py</span>
+<span id="cb61-556"><a href="#cb61-556" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb61-557"><a href="#cb61-557" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-558"><a href="#cb61-558" aria-hidden="true" tabindex="-1"></a>If you ran the script successfully and it created <span class="in">`data/cogaps_result_distributed.h5ad`</span>, you can load it below.</span>
+<span id="cb61-559"><a href="#cb61-559" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-562"><a href="#cb61-562" aria-hidden="true" tabindex="-1"></a><span class="in">```{python}</span></span>
+<span id="cb61-563"><a href="#cb61-563" aria-hidden="true" tabindex="-1"></a>dist_path <span class="op">=</span> <span class="st">"data/cogaps_result_distributed.h5ad"</span></span>
+<span id="cb61-564"><a href="#cb61-564" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> os.path.exists(dist_path):</span>
+<span id="cb61-565"><a href="#cb61-565" aria-hidden="true" tabindex="-1"></a>    dist_result <span class="op">=</span> sc.read_h5ad(dist_path)</span>
+<span id="cb61-566"><a href="#cb61-566" aria-hidden="true" tabindex="-1"></a>    dist_result</span>
+<span id="cb61-567"><a href="#cb61-567" aria-hidden="true" tabindex="-1"></a><span class="cf">else</span>:</span>
+<span id="cb61-568"><a href="#cb61-568" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(<span class="st">"Distributed result not found. Run run_pycogaps_distributed.py from Terminal first."</span>)</span>
+<span id="cb61-569"><a href="#cb61-569" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb61-570"><a href="#cb61-570" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-571"><a href="#cb61-571" aria-hidden="true" tabindex="-1"></a>------------------------------------------------------------------------</span>
+<span id="cb61-572"><a href="#cb61-572" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-573"><a href="#cb61-573" aria-hidden="true" tabindex="-1"></a><span class="fu"># Final answers (summary)</span></span>
+<span id="cb61-574"><a href="#cb61-574" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-575"><a href="#cb61-575" aria-hidden="true" tabindex="-1"></a><span class="ss">-   </span>**Q1:** Identify the pattern most correlated with stimulation; validate using top genes (expected ISG enrichment).</span>
+<span id="cb61-576"><a href="#cb61-576" aria-hidden="true" tabindex="-1"></a><span class="ss">-   </span>**Q2:** Identity patterns localize by cell type; the IFN response pattern shows condition association across cell types.</span>
+<span id="cb61-577"><a href="#cb61-577" aria-hidden="true" tabindex="-1"></a><span class="ss">-   </span>**Q3:** Compare IFN pattern activity by immune cell type (and split by condition) to quantify heterogeneity.</span>
+<span id="cb61-578"><a href="#cb61-578" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-579"><a href="#cb61-579" aria-hidden="true" tabindex="-1"></a>------------------------------------------------------------------------</span>
+<span id="cb61-580"><a href="#cb61-580" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-581"><a href="#cb61-581" aria-hidden="true" tabindex="-1"></a><span class="fu"># References</span></span>
+<span id="cb61-582"><a href="#cb61-582" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-583"><a href="#cb61-583" aria-hidden="true" tabindex="-1"></a><span class="ss">-   </span>Kang, H. M., Subramaniam, M., Targ, S., Nguyen, M., Maliskova, L., McCarthy, E., … Ye, C. J. (2018). Multiplexed droplet single-cell RNA-sequencing using natural genetic variation. *Nature Biotechnology*, 36(1), 89–94. https://doi.org/10.1038/nbt.4042</span>
+<span id="cb61-584"><a href="#cb61-584" aria-hidden="true" tabindex="-1"></a><span class="ss">-   </span>Kotliar, D., Veres, A., Nagy, M. A., Tabrizi, S., Hodis, E., Melton, D. A., &amp; Sabeti, P. C. (2019). Identifying gene expression programs of cell-type identity and cellular activity with single-cell RNA-Seq. *eLife*, 8, e43803. https://doi.org/10.7554/eLife.43803</span>
+<span id="cb61-585"><a href="#cb61-585" aria-hidden="true" tabindex="-1"></a><span class="ss">-   </span>Stein-O’Brien, G. L., Clark, B. S., Sherman, T., Zibetti, C., Hu, Q., Sealfon, R., … Fertig, E. J. (2019). Decomposing cell identity for transfer learning across cellular measurements, platforms, tissues, and species. *Cell Systems*, 8(5), 395–411.e8. https://doi.org/10.1016/j.cels.2019.04.004</span>
+<span id="cb61-586"><a href="#cb61-586" aria-hidden="true" tabindex="-1"></a><span class="ss">-   </span>Fertig, E. J., Ding, J., Favorov, A. V., Parmigiani, G., &amp; Ochs, M. F. (2010). CoGAPS: An R/C++ package to identify patterns and biological process activity in transcriptomic data. *Bioinformatics*, 26(21), 2792–2793. https://doi.org/10.1093/bioinformatics/btq503</span>
+</code><button title="Copy to Clipboard" class="code-copy-button" data-in-quarto-modal=""><i class="bi"></i></button></pre></div>
+</div></div></div></div></div>
+</div> <!-- /content -->
+
+
+
+
+</body></html>

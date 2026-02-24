@@ -9,14 +9,37 @@ Thumbs.db
 .idea/
 
 # =========================
-# Quarto / render artifacts
+# Quarto / render artifacts (default: ignore)
 # =========================
 .quarto/
 _freeze/
 _site/
 _book/
-*_files/
 *_cache/
+*_files/
+
+# --- BUT: allow publishing rendered outputs in docs/ ---
+!docs/
+!docs/**/
+!docs/**/*_files/
+!docs/**/*_files/**
+
+# (optional but common) allow rendered html in docs/
+!docs/**/*.html
+!docs/**/*.css
+!docs/**/*.js
+!docs/**/*.map
+!docs/**/*.png
+!docs/**/*.jpg
+!docs/**/*.jpeg
+!docs/**/*.gif
+!docs/**/*.svg
+!docs/**/*.woff
+!docs/**/*.woff2
+!docs/**/*.ttf
+!docs/**/*.eot
+!docs/**/*.ico
+!docs/**/*.pdf
 
 # =========================
 # Jupyter / IPython
